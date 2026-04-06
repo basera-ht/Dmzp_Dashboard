@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FileText, Download, Calendar, TrendingUp } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { FileText, Download, Calendar, TrendingUp, Upload, Eye, Loader2 } from 'lucide-react';
 import { apiClient } from '../../lib/api';
 
 interface FormStats {
@@ -9,16 +9,35 @@ interface FormStats {
   byMonth: Record<string, number>;
 }
 
+interface Report {
+  id: number;
+  name: string;
+  type: string;
+  date: string;
+  status: string;
+  fileUrl?: string;
+}
+
 export function Reports() {
   const [stats, setStats] = useState<FormStats | null>(null);
+  const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchData() {
       try {
-        const response = await apiClient.get<FormStats>('/form-data/stats');
-        if (response.success && response.data) {
-          setStats(response.data);
+        const [statsRes, reportsRes] = await Promise.all([
+          apiClient.get<FormStats>('/form-data/stats'),
+          apiClient.get<{ data: Report[] }>('/reports?limit=50'),
+        ]);
+        
+        if (statsRes.success && statsRes.data) {
+          setStats(statsRes.data);
+        }
+        if (reportsRes.success && reportsRes.data) {
+          setReports(reportsRes.data.data || []);
         }
       } catch (err) {
         // Silent fail
@@ -27,7 +46,7 @@ export function Reports() {
       }
     }
 
-    fetchStats();
+    fetchData();
   }, []);
 
   const totalMembers = stats?.totalMembers ?? 0;
@@ -42,16 +61,88 @@ export function Reports() {
     { label: 'Growth Rate', value: loading ? '...' : '+12%', icon: TrendingUp, color: 'green' },
   ];
 
-  const yearEntries = Object.entries(byYear).map(([year, count]) => ({
-    year,
-    count,
-    type: 'Growth Analysis',
-    date: new Date().toISOString().split('T')[0],
-    status: 'Ready',
-  }));
+  const handleUploadClick = (reportId: number) => {
+    fileInputRef.current?.click();
+    fileInputRef.current!.dataset.reportId = reportId.toString();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reportId = parseInt(e.target.dataset.reportId || '0');
+    if (!reportId) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    if (file.type !== 'application/pdf') {
+      alert('Only PDF files are allowed');
+      return;
+    }
+
+    setUploadingId(reportId);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/reports/${reportId}/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${apiClient.getToken()}`,
+        },
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setReports(prev => prev.map(r => 
+          r.id === reportId ? { ...r, fileUrl: result.data?.fileUrl } : r
+        ));
+      } else {
+        alert(result.error || 'Upload failed');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Upload failed');
+    } finally {
+      setUploadingId(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleView = (url?: string) => {
+    if (url) {
+      window.open(url, '_blank');
+    }
+  };
+
+  const handleDownload = (url?: string) => {
+    if (url) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = '';
+      link.click();
+    }
+  };
 
   return (
     <div className="p-8">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        data-report-id="0"
+        onChange={handleFileChange}
+      />
+
       <div className="mb-8">
         <h1 className="text-gray-900 mb-1">Reports & Analytics</h1>
         <p className="text-sm text-gray-600">Generate and download detailed reports</p>
@@ -115,23 +206,26 @@ export function Reports() {
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">PDF</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {yearEntries.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    {loading ? 'Loading...' : 'No reports available'}
-                  </td>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                </tr>
+              ) : reports.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">No reports available</td>
                 </tr>
               ) : (
-                yearEntries.map((report, index) => (
-                  <tr key={index} className="hover:bg-gray-50 transition-colors">
+                reports.map((report) => (
+                  <tr key={report.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <FileText className="w-5 h-5 text-gray-400 mr-3" />
-                        <span className="text-sm text-gray-900">{report.year} Member Report</span>
+                        <span className="text-sm text-gray-900">{report.name}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -139,17 +233,60 @@ export function Reports() {
                         {report.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{report.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {report.date ? new Date(report.date).toLocaleDateString() : 'N/A'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
                         {report.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button className="flex items-center gap-2 text-teal-600 hover:text-teal-700 text-sm">
-                        <Download className="w-4 h-4" />
-                        Download
-                      </button>
+                      {report.fileUrl ? (
+                        <span className="text-xs text-green-600 flex items-center gap-1">
+                          <FileText className="w-3 h-3" /> Uploaded
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Not uploaded</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {uploadingId === report.id ? (
+                          <div className="flex items-center gap-1 text-sm text-gray-500">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Uploading...
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleUploadClick(report.id)}
+                              className="flex items-center gap-1 px-2 py-1 text-sm text-teal-600 hover:text-teal-700 border border-teal-200 rounded hover:bg-teal-50 transition-colors"
+                            >
+                              <Upload className="w-3 h-3" />
+                              Upload
+                            </button>
+                            {report.fileUrl && (
+                              <>
+                                <button
+                                  onClick={() => handleView(report.fileUrl)}
+                                  className="p-1 text-blue-600 hover:text-blue-700"
+                                  title="View"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDownload(report.fileUrl)}
+                                  className="p-1 text-teal-600 hover:text-teal-700"
+                                  title="Download"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
