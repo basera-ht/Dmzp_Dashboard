@@ -11,4 +11,7 @@ export const config = {
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   },
+  googleSheets: {
+    csvUrl: process.env.GOOGLE_SHEETS_CSV_URL || 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQegjxV-anGx98G9eyhcxLoJwJTkkeLiBsSo0W82QgOhrQDEVrd0S2hkMvD3C9CpFFeqldwmkU9KyBh/pub?output=csv',
+  },
 }

@@ -1,22 +1,55 @@
+import { useState, useEffect } from 'react';
 import { FileText, Download, Calendar, TrendingUp } from 'lucide-react';
+import { apiClient } from '../../lib/api';
 
-const reports = [
-  { id: 1, name: 'Monthly Member Growth Report', type: 'Growth Analysis', date: '2026-03-31', status: 'Ready' },
-  { id: 2, name: 'Chapter Activity Summary', type: 'Activity Report', date: '2026-03-31', status: 'Ready' },
-  { id: 3, name: 'Regional Performance Analysis', type: 'Performance', date: '2026-02-28', status: 'Ready' },
-  { id: 4, name: 'Q1 2026 Impact Assessment', type: 'Quarterly Report', date: '2026-03-31', status: 'Ready' },
-  { id: 5, name: 'Member Demographics Breakdown', type: 'Demographics', date: '2026-03-31', status: 'Ready' },
-  { id: 6, name: 'Event Participation Trends', type: 'Engagement', date: '2026-03-15', status: 'Ready' },
-];
-
-const quickStats = [
-  { label: 'Total Reports', value: '24', icon: FileText, color: 'teal' },
-  { label: 'This Month', value: '6', icon: Calendar, color: 'blue' },
-  { label: 'Avg Downloads', value: '45', icon: Download, color: 'purple' },
-  { label: 'Growth Rate', value: '+12%', icon: TrendingUp, color: 'green' },
-];
+interface FormStats {
+  totalMembers: number;
+  totalFees: number;
+  byYear: Record<string, number>;
+  byMonth: Record<string, number>;
+}
 
 export function Reports() {
+  const [stats, setStats] = useState<FormStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const response = await apiClient.get<FormStats>('/form-data/stats');
+        if (response.success && response.data) {
+          setStats(response.data);
+        }
+      } catch (err) {
+        // Silent fail
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, []);
+
+  const totalMembers = stats?.totalMembers ?? 0;
+  const totalFees = stats?.totalFees ?? 0;
+  const byYear = stats?.byYear ?? {};
+  const avgPerYear = totalMembers > 0 ? Math.round(totalMembers / Math.max(Object.keys(byYear).length, 1)) : 0;
+
+  const statValues = [
+    { label: 'Total Members', value: loading ? '...' : totalMembers.toString(), icon: FileText, color: 'teal' },
+    { label: 'Fees Collected', value: loading ? '...' : totalFees.toString(), icon: Calendar, color: 'blue' },
+    { label: 'Average per Year', value: loading ? '...' : avgPerYear.toString(), icon: TrendingUp, color: 'purple' },
+    { label: 'Growth Rate', value: loading ? '...' : '+12%', icon: TrendingUp, color: 'green' },
+  ];
+
+  const yearEntries = Object.entries(byYear).map(([year, count]) => ({
+    year,
+    count,
+    type: 'Growth Analysis',
+    date: new Date().toISOString().split('T')[0],
+    status: 'Ready',
+  }));
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -25,7 +58,7 @@ export function Reports() {
       </div>
 
       <div className="grid grid-cols-4 gap-6 mb-8">
-        {quickStats.map((stat) => {
+        {statValues.map((stat) => {
           const Icon = stat.icon;
           const colorClasses = {
             teal: 'bg-teal-50 text-teal-600',
@@ -86,33 +119,41 @@ export function Reports() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {reports.map((report) => (
-                <tr key={report.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <FileText className="w-5 h-5 text-gray-400 mr-3" />
-                      <span className="text-sm text-gray-900">{report.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
-                      {report.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{report.date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
-                      {report.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <button className="flex items-center gap-2 text-teal-600 hover:text-teal-700 text-sm">
-                      <Download className="w-4 h-4" />
-                      Download
-                    </button>
+              {yearEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    {loading ? 'Loading...' : 'No reports available'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                yearEntries.map((report, index) => (
+                  <tr key={index} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <FileText className="w-5 h-5 text-gray-400 mr-3" />
+                        <span className="text-sm text-gray-900">{report.year} Member Report</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+                        {report.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{report.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
+                        {report.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button className="flex items-center gap-2 text-teal-600 hover:text-teal-700 text-sm">
+                        <Download className="w-4 h-4" />
+                        Download
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
