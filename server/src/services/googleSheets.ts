@@ -87,7 +87,9 @@ export function calculateStats(entries: FormEntry[]): FormStats {
 
   entries.forEach((entry) => {
     if (entry.year) {
-      byYear[entry.year] = (byYear[entry.year] || 0) + 1
+      const isValidYear = /^\d{4}$/.test(entry.year.trim()) && parseInt(entry.year, 10) >= 1900
+      const yearKey = isValidYear ? entry.year.trim() : 'Unknown'
+      byYear[yearKey] = (byYear[yearKey] || 0) + 1
     }
 
     const fees = entry.fees?.toLowerCase() || ''

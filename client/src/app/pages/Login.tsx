@@ -30,11 +30,11 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [loginAttempts, setLoginAttempts] = useState(0)
   const [lockoutUntil, setLockoutUntil] = useState<Date | null>(null)
-  
+
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const from = (location.state as any)?.from?.pathname || '/dashboard'
 
   const {
@@ -76,7 +76,7 @@ export function LoginPage() {
     } catch (err: any) {
       const newAttempts = loginAttempts + 1
       setLoginAttempts(newAttempts)
-      
+
       if (newAttempts >= 5) {
         const lockoutTime = new Date(Date.now() + 15 * 60 * 1000)
         setLockoutUntil(lockoutTime)
@@ -195,15 +195,6 @@ export function LoginPage() {
               )}
             </button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <p className="text-center text-sm text-gray-500">
-              Don't have an account?{' '}
-              <a href="#" className="text-teal-600 hover:text-teal-700 font-medium">
-                Contact Administrator
-              </a>
-            </p>
-          </div>
         </div>
 
         <div className="mt-6 flex items-center justify-center gap-6 text-xs text-gray-400">

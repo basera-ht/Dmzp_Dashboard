@@ -5,6 +5,7 @@ import { Root } from './pages/Root'
 import { Dashboard } from './pages/Dashboard'
 import { AllProfiles } from './pages/AllProfiles'
 import { Reports } from './pages/Reports'
+import { Events } from './pages/Events'
 import { Settings } from './pages/Settings'
 import { LoginPage } from './pages/Login'
 
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Dashboard },
       { path: 'profiles', Component: AllProfiles },
+      { path: 'events', Component: Events },
       { path: 'reports', Component: Reports },
       { path: 'settings', Component: Settings },
     ],

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, Label } from 'recharts';
 import { apiClient } from '../../lib/api';
 
 interface FormStats {
@@ -10,6 +10,26 @@ interface FormStats {
 }
 
 const COLORS = ['#14b8a6', '#0891b2', '#1e3a8a', '#9333ea', '#dc2626', '#ea580c', '#ca8a04', '#16a34a'];
+
+interface CenterLabelProps {
+  viewBox?: { cx?: number; cy?: number };
+  totalMembers: number;
+}
+
+function CenterLabel({ viewBox, totalMembers }: CenterLabelProps) {
+  const cx = viewBox?.cx ?? 0;
+  const cy = viewBox?.cy ?? 0;
+  return (
+    <text textAnchor="middle" dominantBaseline="middle">
+      <tspan x={cx} y={cy - 10} fontSize="24" fontWeight="600" fill="#111827">
+        {totalMembers.toLocaleString()}
+      </tspan>
+      <tspan x={cx} y={cy + 14} fontSize="12" fill="#6b7280">
+        Total Members
+      </tspan>
+    </text>
+  );
+}
 
 export function DemographicsDonutChart() {
   const [stats, setStats] = useState<FormStats | null>(null);
@@ -32,25 +52,11 @@ export function DemographicsDonutChart() {
     fetchStats();
   }, []);
 
-  const data = stats?.byYear 
+  const data = stats?.byYear
     ? Object.entries(stats.byYear).map(([name, value]) => ({ name, value }))
     : [];
-  
-  const totalMembers = stats?.totalMembers ?? 0;
 
-  const renderCenterLabel = () => {
-    if (loading) return null;
-    return (
-      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
-        <tspan x="50%" dy="-0.5em" fontSize="24" fontWeight="600" fill="#111827">
-          {totalMembers.toLocaleString()}
-        </tspan>
-        <tspan x="50%" dy="1.5em" fontSize="12" fill="#6b7280">
-          Total Members
-        </tspan>
-      </text>
-    );
-  };
+  const totalMembers = stats?.totalMembers ?? 0;
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -75,6 +81,15 @@ export function DemographicsDonutChart() {
               {data.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
+              <Label
+                content={(props) => (
+                  <CenterLabel
+                    viewBox={props.viewBox as { cx?: number; cy?: number }}
+                    totalMembers={totalMembers}
+                  />
+                )}
+                position="center"
+              />
             </Pie>
             <Tooltip
               contentStyle={{
@@ -90,7 +105,6 @@ export function DemographicsDonutChart() {
               layout="vertical"
               iconType="circle"
             />
-            {renderCenterLabel()}
           </PieChart>
         </ResponsiveContainer>
       )}

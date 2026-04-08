@@ -1,18 +1,19 @@
-import { LayoutDashboard, Users, FileText, Settings, User } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, User, CalendarDays } from 'lucide-react';
 import { NavLink } from 'react-router';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: Users, label: 'All Profiles', path: '/profiles' },
-  { icon: FileText, label: 'Reports', path: '/reports' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
+  { icon: LayoutDashboard, label: 'Dashboard',    path: '/'          },
+  { icon: Users,           label: 'All Profiles', path: '/profiles'  },
+  { icon: CalendarDays,    label: 'Events',       path: '/events'    },
+  { icon: FileText,        label: 'Reports',      path: '/reports'   },
+  { icon: Settings,        label: 'Settings',     path: '/settings'  },
 ];
 
 export function Sidebar() {
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen">
       <div className="p-6">
-        <h2 className="text-primary">Impact Alliance</h2>
+        <h2 className="text-primary">DMZP</h2>
       </div>
 
       <nav className="flex-1 px-4 space-y-1">

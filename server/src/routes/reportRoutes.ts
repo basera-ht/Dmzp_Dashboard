@@ -1,10 +1,18 @@
 import { Router } from 'express'
 import multer from 'multer'
-import https from 'https'
-import http from 'http'
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { Readable } from 'stream'
 import { reportController } from '../controllers/index.js'
 import { uploadFileToS3, getPublicUrl } from '../services/s3Service.js'
 import { config } from '../config/index.js'
+
+const s3 = new S3Client({
+  region: config.aws.region,
+  credentials: {
+    accessKeyId: config.aws.accessKeyId,
+    secretAccessKey: config.aws.secretAccessKey,
+  },
+})
 
 const router = Router()
 
@@ -104,27 +112,40 @@ router.get('/:id/download', async (req, res) => {
     const reportName = (result.data.name as string) || 'report'
     const safeFilename = `${reportName.replace(/[^a-z0-9_\-\s]/gi, '_')}.pdf`
 
-    const requester = fileUrl.startsWith('https') ? https : http
+    // Extract the S3 key from the stored URL
+    // URL format: https://<bucket>.s3.<region>.amazonaws.com/<key>
+    const urlObj = new URL(fileUrl)
+    const key = decodeURIComponent(urlObj.pathname.replace(/^\//, '')) // strip leading slash + decode %20 etc.
 
-    requester.get(fileUrl, (s3Res) => {
-      if (s3Res.statusCode !== 200) {
-        return res.status(502).json({ success: false, error: 'Failed to fetch file from storage' })
-      }
-
-      res.setHeader('Content-Type', 'application/pdf')
-      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`)
-      if (s3Res.headers['content-length']) {
-        res.setHeader('Content-Length', s3Res.headers['content-length'])
-      }
-
-      s3Res.pipe(res)
-    }).on('error', (err) => {
-      console.error('Proxy download error:', err)
-      res.status(500).json({ success: false, error: 'Failed to download file' })
+    const command = new GetObjectCommand({
+      Bucket: config.aws.bucketName,
+      Key: key,
     })
-  } catch (error) {
+
+    const s3Response = await s3.send(command)
+
+    if (!s3Response.Body) {
+      return res.status(404).json({ success: false, error: 'File not found in storage' })
+    }
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`)
+    if (s3Response.ContentLength) {
+      res.setHeader('Content-Length', s3Response.ContentLength)
+    }
+
+    // Stream body to response
+    const readable = s3Response.Body as Readable
+    readable.pipe(res)
+    readable.on('error', (err) => {
+      console.error('S3 stream error:', err)
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: 'Failed to stream file' })
+      }
+    })
+  } catch (error: any) {
     console.error('Download error:', error)
-    res.status(500).json({ success: false, error: 'Failed to get download URL' })
+    res.status(500).json({ success: false, error: error.message || 'Failed to get file' })
   }
 })
 

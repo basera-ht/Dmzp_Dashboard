@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Download, Calendar, TrendingUp, Upload, Eye, Loader2, X } from 'lucide-react';
+import { FileText, Download, Calendar, TrendingUp, Upload, Loader2, Trash2, ExternalLink } from 'lucide-react';
 import { apiClient } from '../../lib/api';
 
 interface FormStats {
@@ -21,49 +21,49 @@ interface Report {
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export function Reports() {
-  const [stats, setStats] = useState<FormStats | null>(null);
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats]             = useState<FormStats | null>(null);
+  const [reports, setReports]         = useState<Report[]>([]);
+  const [loading, setLoading]         = useState(true);
   const [uploadingId, setUploadingId] = useState<number | null>(null);
   const [uniqueTypes, setUniqueTypes] = useState<string[]>([]);
   const [newReportName, setNewReportName] = useState('');
   const [newReportType, setNewReportType] = useState('');
-  const [generating, setGenerating] = useState(false);
-  const [previewReport, setPreviewReport] = useState<Report | null>(null);
+  const [generating, setGenerating]   = useState(false);
   const [downloading, setDownloading] = useState<number | null>(null);
+  const [deletingId, setDeletingId]   = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [statsRes, reportsRes, typesRes] = await Promise.all([
-          apiClient.get<FormStats>('/form-data/stats'),
-          apiClient.get<{ data: Report[] }>('/reports?limit=50'),
-          apiClient.get<string[]>('/reports/types/unique'),
-        ]);
-
-        if (statsRes.success && statsRes.data) setStats(statsRes.data);
-        if (reportsRes.success && reportsRes.data) setReports(reportsRes.data.data || []);
-        if (typesRes.success && typesRes.data) setUniqueTypes(typesRes.data);
-      } catch (err) {
-        // Silent fail
-      } finally {
-        setLoading(false);
-      }
+  const fetchData = async () => {
+    try {
+      const [statsRes, reportsRes, typesRes] = await Promise.all([
+        apiClient.get<FormStats>('/form-data/stats'),
+        apiClient.get<{ data: Report[] }>('/reports?limit=50'),
+        apiClient.get<string[]>('/reports/types/unique'),
+      ]);
+      if (statsRes.success && statsRes.data)     setStats(statsRes.data);
+      if (reportsRes.success && reportsRes.data) setReports(reportsRes.data.data || []);
+      if (typesRes.success && typesRes.data)     setUniqueTypes(typesRes.data);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
     }
-    fetchData();
-  }, []);
+  };
 
+  useEffect(() => { fetchData(); }, []);
+
+  // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
-    if (!newReportName.trim() || !newReportType.trim()) {
-      alert('Please provide a report name and type');
+    if (!newReportName.trim()) {
+      alert('Please provide a report name');
       return;
     }
     setGenerating(true);
     try {
       const response = await apiClient.post<Report>('/reports', {
         name: newReportName.trim(),
-        type: newReportType.trim(),
+        type: newReportType.trim() || 'General',
       });
       if (response.success && response.data) {
         setReports([response.data, ...reports]);
@@ -75,28 +75,14 @@ export function Reports() {
       } else {
         alert('Failed to generate report');
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert('An unexpected error occurred');
     } finally {
       setGenerating(false);
     }
   };
 
-  const totalMembers = stats?.totalMembers ?? 0;
-  const totalFees = stats?.totalFees ?? 0;
-  const byYear = stats?.byYear ?? {};
-  const avgPerYear = totalMembers > 0
-    ? Math.round(totalMembers / Math.max(Object.keys(byYear).length, 1))
-    : 0;
-
-  const statValues = [
-    { label: 'Total Members', value: loading ? '...' : totalMembers.toString(), icon: FileText, color: 'teal' },
-    { label: 'Fees Collected', value: loading ? '...' : totalFees.toString(), icon: Calendar, color: 'blue' },
-    { label: 'Average per Year', value: loading ? '...' : avgPerYear.toString(), icon: TrendingUp, color: 'purple' },
-    { label: 'Growth Rate', value: loading ? '...' : '+12%', icon: TrendingUp, color: 'green' },
-  ];
-
+  // ── Upload ────────────────────────────────────────────────────────────────
   const handleUploadClick = (reportId: number) => {
     if (fileInputRef.current) {
       fileInputRef.current.dataset.reportId = reportId.toString();
@@ -107,10 +93,8 @@ export function Reports() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reportId = parseInt(e.target.dataset.reportId || '0');
     if (!reportId) return;
-
     if (file.size > 10 * 1024 * 1024) { alert('File size must be less than 10MB'); return; }
     if (file.type !== 'application/pdf') { alert('Only PDF files are allowed'); return; }
 
@@ -118,23 +102,18 @@ export function Reports() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-
       const response = await fetch(`${API_BASE}/reports/${reportId}/upload`, {
         method: 'POST',
         body: formData,
-        headers: { 'Authorization': `Bearer ${apiClient.getToken()}` },
+        headers: { Authorization: `Bearer ${apiClient.getToken()}` },
       });
       const result = await response.json();
-
       if (result.success) {
-        setReports(prev => prev.map(r =>
-          r.id === reportId ? { ...r, fileUrl: result.data?.fileUrl } : r
-        ));
+        setReports(prev => prev.map(r => r.id === reportId ? { ...r, fileUrl: result.data?.fileUrl } : r));
       } else {
         alert(result.error || 'Upload failed');
       }
-    } catch (err) {
-      console.error('Upload error:', err);
+    } catch {
       alert('Upload failed');
     } finally {
       setUploadingId(null);
@@ -142,15 +121,33 @@ export function Reports() {
     }
   };
 
-  const handleView = (report: Report) => {
-    setPreviewReport(report);
+  // ── Download (opens in new tab as inline PDF) ─────────────────────────────
+  const handleOpen = async (report: Report) => {
+    setDownloading(report.id);
+    try {
+      const res = await fetch(`${API_BASE}/reports/${report.id}/download`, {
+        headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+      });
+      if (!res.ok) throw new Error('Failed');
+      const blob = await res.blob();
+      // Force inline/view by using a blob URL in a new tab
+      const blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      window.open(blobUrl, '_blank');
+      // Revoke after a short delay to allow tab to load
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+    } catch {
+      alert('Could not open PDF. Try downloading instead.');
+    } finally {
+      setDownloading(null);
+    }
   };
 
+  // ── Download (save file) ──────────────────────────────────────────────────
   const handleDownload = async (report: Report) => {
     setDownloading(report.id);
     try {
       const res = await fetch(`${API_BASE}/reports/${report.id}/download`, {
-        headers: { 'Authorization': `Bearer ${apiClient.getToken()}` },
+        headers: { Authorization: `Bearer ${apiClient.getToken()}` },
       });
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
@@ -169,11 +166,44 @@ export function Reports() {
     }
   };
 
+  // ── Delete ────────────────────────────────────────────────────────────────
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      const response = await apiClient.delete(`/reports/${id}`);
+      if (response.success) {
+        setReports(prev => prev.filter(r => r.id !== id));
+        setDeleteConfirmId(null);
+      } else {
+        alert('Failed to delete report');
+      }
+    } catch {
+      alert('Failed to delete report');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // ── Derived stats ─────────────────────────────────────────────────────────
+  const totalMembers = stats?.totalMembers ?? 0;
+  const totalFees    = stats?.totalFees ?? 0;
+  const byYear       = stats?.byYear ?? {};
+  const avgPerYear   = totalMembers > 0
+    ? Math.round(totalMembers / Math.max(Object.keys(byYear).length, 1))
+    : 0;
+
+  const statValues = [
+    { label: 'Total Members',    value: loading ? '...' : totalMembers.toString(), icon: FileText,  color: 'teal'   },
+    { label: 'Fees Collected',   value: loading ? '...' : totalFees.toString(),    icon: Calendar,  color: 'blue'   },
+    { label: 'Average per Year', value: loading ? '...' : avgPerYear.toString(),   icon: TrendingUp, color: 'purple' },
+    { label: 'Growth Rate',      value: loading ? '...' : '+12%',                  icon: TrendingUp, color: 'green'  },
+  ];
+
   const colorClasses: Record<string, string> = {
-    teal: 'bg-teal-50 text-teal-600',
-    blue: 'bg-blue-50 text-blue-600',
+    teal:   'bg-teal-50 text-teal-600',
+    blue:   'bg-blue-50 text-blue-600',
     purple: 'bg-purple-50 text-purple-600',
-    green: 'bg-green-50 text-green-600',
+    green:  'bg-green-50 text-green-600',
   };
 
   return (
@@ -188,69 +218,47 @@ export function Reports() {
         onChange={handleFileChange}
       />
 
-      {/* ── PDF Preview Modal ─────────────────────────────────────────── */}
-      {previewReport && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setPreviewReport(null)}
-        >
-          <div
-            className="relative bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-            style={{ width: '90vw', maxWidth: '960px', height: '90vh' }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5 text-teal-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{previewReport.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {previewReport.type} &middot; {previewReport.date ? new Date(previewReport.date).toLocaleDateString() : ''}
-                  </p>
-                </div>
+      {/* ── Delete Confirm Modal ──────────────────────────────────────────── */}
+      {deleteConfirmId !== null && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-500" />
               </div>
-              <div className="flex items-center gap-2 shrink-0 ml-4">
-                <button
-                  onClick={() => handleDownload(previewReport)}
-                  disabled={downloading === previewReport.id}
-                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
-                >
-                  {downloading === previewReport.id
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Downloading...</>
-                    : <><Download className="w-4 h-4" /> Download</>}
-                </button>
-                <button
-                  onClick={() => setPreviewReport(null)}
-                  className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+              <h3 className="text-gray-900 font-semibold">Delete Report?</h3>
             </div>
-
-            {/* PDF iframe */}
-            <div className="flex-1 bg-gray-100">
-              <iframe
-                src={`${previewReport.fileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-                className="w-full h-full border-0"
-                title={previewReport.name}
-              />
+            <p className="text-sm text-gray-600 mb-5">
+              This will permanently remove the report record. Any uploaded PDF remains in storage.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                disabled={deletingId === deleteConfirmId}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm transition-colors disabled:opacity-50"
+              >
+                {deletingId === deleteConfirmId
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting...</>
+                  : 'Delete'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Page Header ──────────────────────────────────────────────── */}
+      {/* ── Page Header ──────────────────────────────────────────────────── */}
       <div className="mb-8">
         <h1 className="text-gray-900 mb-1">Reports &amp; Analytics</h1>
         <p className="text-sm text-gray-600">Generate and download detailed reports</p>
       </div>
 
-      {/* ── Stat Cards ───────────────────────────────────────────────── */}
+      {/* ── Stat Cards ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-6 mb-8">
         {statValues.map((stat) => {
           const Icon = stat.icon;
@@ -268,27 +276,19 @@ export function Reports() {
         })}
       </div>
 
-      {/* ── Generate New Report ──────────────────────────────────────── */}
+      {/* ── Generate New Report ──────────────────────────────────────────── */}
       <datalist id="report-types">
         {uniqueTypes.map(type => <option key={type} value={type} />)}
       </datalist>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
         <h3 className="text-gray-900 mb-4">Generate New Report</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <input
             type="text"
             placeholder="Report Name"
             value={newReportName}
             onChange={e => setNewReportName(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-          />
-          <input
-            type="text"
-            list="report-types"
-            placeholder="Select or Type Report Type"
-            value={newReportType}
-            onChange={e => setNewReportType(e.target.value)}
             className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
           <button
@@ -301,7 +301,7 @@ export function Reports() {
         </div>
       </div>
 
-      {/* ── Reports Table ────────────────────────────────────────────── */}
+      {/* ── Reports Table ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-gray-900">Available Reports</h3>
@@ -332,21 +332,30 @@ export function Reports() {
               ) : (
                 reports.map(report => (
                   <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                    {/* Name */}
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <FileText className="w-5 h-5 text-gray-400 mr-3 shrink-0" />
                         <span className="text-sm text-gray-900">{report.name}</span>
                       </div>
                     </td>
+
+                    {/* Type */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">{report.type}</span>
                     </td>
+
+                    {/* Date */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {report.date ? new Date(report.date).toLocaleDateString() : 'N/A'}
                     </td>
+
+                    {/* Status */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">{report.status}</span>
                     </td>
+
+                    {/* PDF indicator */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       {report.fileUrl ? (
                         <span className="text-xs text-green-600 flex items-center gap-1">
@@ -356,6 +365,8 @@ export function Reports() {
                         <span className="text-xs text-gray-400">No file</span>
                       )}
                     </td>
+
+                    {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         {uploadingId === report.id ? (
@@ -364,21 +375,30 @@ export function Reports() {
                           </div>
                         ) : (
                           <>
+                            {/* Upload */}
                             <button
                               onClick={() => handleUploadClick(report.id)}
                               className="flex items-center gap-1 px-2 py-1 text-xs text-teal-600 hover:text-teal-700 border border-teal-200 rounded hover:bg-teal-50 transition-colors"
                             >
                               <Upload className="w-3 h-3" /> Upload
                             </button>
+
                             {report.fileUrl && (
                               <>
+                                {/* Open PDF in new tab (blob URL avoids CORS iframe issues) */}
                                 <button
-                                  onClick={() => handleView(report)}
-                                  className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 transition-colors"
-                                  title="Preview PDF"
+                                  onClick={() => handleOpen(report)}
+                                  disabled={downloading === report.id}
+                                  className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 transition-colors disabled:opacity-50"
+                                  title="Open PDF in new tab"
                                 >
-                                  <Eye className="w-3 h-3" /> View
+                                  {downloading === report.id
+                                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                                    : <ExternalLink className="w-3 h-3" />}
+                                  {downloading === report.id ? 'Opening...' : 'View'}
                                 </button>
+
+                                {/* Download */}
                                 <button
                                   onClick={() => handleDownload(report)}
                                   disabled={downloading === report.id}
@@ -391,6 +411,15 @@ export function Reports() {
                                 </button>
                               </>
                             )}
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => setDeleteConfirmId(report.id)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 transition-colors"
+                              title="Delete report"
+                            >
+                              <Trash2 className="w-3 h-3" /> Delete
+                            </button>
                           </>
                         )}
                       </div>
