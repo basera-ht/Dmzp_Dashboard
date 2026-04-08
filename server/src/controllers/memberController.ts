@@ -66,14 +66,22 @@ export const memberController = {
   },
 
   async create(data: NewMember): Promise<ApiResponse<any>> {
-    const result = await db.insert(members).values(data).returning()
+    const insertData = { ...data }
+    if (insertData.joinDate && typeof insertData.joinDate === 'string') {
+      insertData.joinDate = new Date(insertData.joinDate)
+    }
+    const result = await db.insert(members).values(insertData).returning()
     return { success: true, data: result[0] }
   },
 
   async update(id: number, data: Partial<NewMember>): Promise<ApiResponse<any>> {
+    const updateData = { ...data }
+    if (updateData.joinDate && typeof updateData.joinDate === 'string') {
+      updateData.joinDate = new Date(updateData.joinDate)
+    }
     const result = await db
       .update(members)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...updateData, updatedAt: new Date() })
       .where(eq(members.id, id))
       .returning()
     

@@ -89,14 +89,22 @@ export const eventController = {
   },
 
   async create(data: NewEvent): Promise<ApiResponse<any>> {
-    const result = await db.insert(events).values(data).returning()
+    const insertData = { ...data }
+    if (insertData.date && typeof insertData.date === 'string') {
+      insertData.date = new Date(insertData.date)
+    }
+    const result = await db.insert(events).values(insertData).returning()
     return { success: true, data: result[0] }
   },
 
   async update(id: number, data: Partial<NewEvent>): Promise<ApiResponse<any>> {
+    const updateData = { ...data }
+    if (updateData.date && typeof updateData.date === 'string') {
+      updateData.date = new Date(updateData.date)
+    }
     const result = await db
       .update(events)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...updateData, updatedAt: new Date() })
       .where(eq(events.id, id))
       .returning()
     

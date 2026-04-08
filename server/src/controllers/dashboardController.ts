@@ -1,14 +1,17 @@
-import { sql } from 'drizzle-orm'
+import { sql, gte } from 'drizzle-orm'
 import { db } from '../database/index.js'
 import { members, chapters, events, reports } from '../models/index.js'
 import type { ApiResponse } from '../types/index.js'
 
 export const dashboardController = {
   async getMetrics(): Promise<ApiResponse<any>> {
+    const now = new Date()
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
     const [totalMembers, activeChapters, newSignups, mostActiveRegion] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(members),
       db.select({ count: sql<number>`count(*)` }).from(chapters),
-      db.select({ count: sql<number>`count(*)` }).from(members),
+      db.select({ count: sql<number>`count(*)` }).from(members).where(gte(members.joinDate, thirtyDaysAgo)),
       db.select({ region: chapters.region, count: sql<number>`count(*)` })
         .from(members)
         .leftJoin(chapters, sql`members.chapter_id = chapters.id`)
@@ -31,9 +34,10 @@ export const dashboardController = {
   async getDemographics(): Promise<ApiResponse<any>> {
     const result = await db.select({
       ageRange: sql<string>`CASE 
-        WHEN EXTRACT(YEAR FROM AGE(join_date)) < 25 THEN '18-24'
-        WHEN EXTRACT(YEAR FROM AGE(join_date)) < 35 THEN '25-34'
-        WHEN EXTRACT(YEAR FROM AGE(join_date)) < 45 THEN '35-44'
+        WHEN date_of_birth IS NULL THEN 'Unknown'
+        WHEN EXTRACT(YEAR FROM AGE(date_of_birth)) < 25 THEN '18-24'
+        WHEN EXTRACT(YEAR FROM AGE(date_of_birth)) < 35 THEN '25-34'
+        WHEN EXTRACT(YEAR FROM AGE(date_of_birth)) < 45 THEN '35-44'
         ELSE '45+'
       END as age_range`,
       count: sql<number>`count(*)`,

@@ -65,8 +65,8 @@ export function Dashboard() {
     <div className="p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-gray-900 mb-1">Dashboard: Regional Chapter Analysis</h1>
-          <p className="text-sm text-gray-600">Track member activity and chapter performance</p>
+          <h1 className="text-gray-900 mb-1">DMZP Association Dashboard</h1>
+          <p className="text-sm text-gray-600">Track DMZP member activity and chapter performance</p>
         </div>
         <button
           onClick={handleRefresh}

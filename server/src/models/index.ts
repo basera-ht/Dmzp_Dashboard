@@ -4,7 +4,6 @@ export const memberStatusEnum = pgEnum('member_status', ['Active', 'Pending', 'I
 export const memberTypeEnum = pgEnum('member_type', ['Student', 'Professional', 'Organization'])
 export const eventStatusEnum = pgEnum('event_status', ['Upcoming', 'Ongoing', 'Completed', 'Cancelled'])
 export const reportStatusEnum = pgEnum('report_status', ['Ready', 'Processing', 'Failed'])
-export const reportTypeEnum = pgEnum('report_type', ['Growth Analysis', 'Activity Report', 'Performance', 'Demographics', 'Quarterly Report', 'Engagement'])
 
 export const chapters = pgTable('chapters', {
   id: serial('id').primaryKey(),
@@ -21,6 +20,7 @@ export const members = pgTable('members', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   chapterId: integer('chapter_id').references(() => chapters.id),
   joinDate: timestamp('join_date').defaultNow().notNull(),
+  dateOfBirth: timestamp('date_of_birth'),
   memberType: memberTypeEnum('member_type').notNull(),
   status: memberStatusEnum('member_status').default('Active').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -44,7 +44,7 @@ export const events = pgTable('events', {
 export const reports = pgTable('reports', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  type: reportTypeEnum('report_type').notNull(),
+  type: varchar('report_type', { length: 255 }).notNull(),
   date: timestamp('date').defaultNow().notNull(),
   status: reportStatusEnum('report_status').default('Processing').notNull(),
   fileUrl: varchar('file_url', { length: 500 }),

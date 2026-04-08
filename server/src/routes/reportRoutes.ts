@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
+import https from 'https'
+import http from 'http'
 import { reportController } from '../controllers/index.js'
 import { uploadFileToS3, getPublicUrl } from '../services/s3Service.js'
 import { config } from '../config/index.js'
@@ -30,8 +32,13 @@ router.get('/stats', async (_req, res) => {
   res.json(result)
 })
 
+router.get('/types/unique', async (_req, res) => {
+  const result = await reportController.getUniqueTypes()
+  res.json(result)
+})
+
 router.get('/:id', async (req, res) => {
-  const id = parseInt(req.params.id)
+  const id = parseInt(req.params.id as string)
   const result = await reportController.getById(id)
   res.json(result)
 })
@@ -42,13 +49,13 @@ router.post('/', async (req, res) => {
 })
 
 router.put('/:id', async (req, res) => {
-  const id = parseInt(req.params.id)
+  const id = parseInt(req.params.id as string)
   const result = await reportController.update(id, req.body)
   res.json(result)
 })
 
 router.delete('/:id', async (req, res) => {
-  const id = parseInt(req.params.id)
+  const id = parseInt(req.params.id as string)
   const result = await reportController.delete(id)
   res.json(result)
 })
@@ -59,7 +66,7 @@ router.post('/:id/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file uploaded' })
     }
 
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const result = await reportController.getById(id)
     
     if (!result.success || !result.data) {
@@ -86,14 +93,35 @@ router.post('/:id/upload', upload.single('file'), async (req, res) => {
 
 router.get('/:id/download', async (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id as string)
     const result = await reportController.getById(id)
-    
+
     if (!result.success || !result.data?.fileUrl) {
       return res.status(404).json({ success: false, error: 'Report or file not found' })
     }
 
-    res.json({ success: true, data: { url: result.data.fileUrl } })
+    const fileUrl = result.data.fileUrl as string
+    const reportName = (result.data.name as string) || 'report'
+    const safeFilename = `${reportName.replace(/[^a-z0-9_\-\s]/gi, '_')}.pdf`
+
+    const requester = fileUrl.startsWith('https') ? https : http
+
+    requester.get(fileUrl, (s3Res) => {
+      if (s3Res.statusCode !== 200) {
+        return res.status(502).json({ success: false, error: 'Failed to fetch file from storage' })
+      }
+
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`)
+      if (s3Res.headers['content-length']) {
+        res.setHeader('Content-Length', s3Res.headers['content-length'])
+      }
+
+      s3Res.pipe(res)
+    }).on('error', (err) => {
+      console.error('Proxy download error:', err)
+      res.status(500).json({ success: false, error: 'Failed to download file' })
+    })
   } catch (error) {
     console.error('Download error:', error)
     res.status(500).json({ success: false, error: 'Failed to get download URL' })
