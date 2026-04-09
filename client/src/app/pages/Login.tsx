@@ -93,12 +93,11 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-white to-blue-50 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl shadow-teal-900/10 p-8 border border-gray-100">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-teal-500/30">
-              <Shield className="w-8 h-8 text-white" />
+          <div className="text-center mb-10">
+            <div className="mb-6">
+              <img src="/logo.png" alt="DMZP Logo" className="w-36 h-36 object-contain mx-auto" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
-            <p className="text-gray-500 mt-2">Sign in to your account</p>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">DMZP Dashboard</h1>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">

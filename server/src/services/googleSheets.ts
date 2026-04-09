@@ -2,18 +2,25 @@ import Papa from 'papaparse'
 import { config } from '../config/index.js'
 
 export interface FormEntry {
+  id?: number | string
   name?: string
-  year?: string
   email?: string
+  phone?: string
+  institution?: string
+  course?: string
+  address?: string
+  bloodGroup?: string
   fees?: string
 }
 
 export interface FormStats {
   totalMembers: number
   totalFees: number
-  byYear: Record<string, number>
-  byMonth: Record<string, number>
+  byInstitution: Record<string, number>
+  byBloodGroup: Record<string, number>
+  byCourse: Record<string, number>
   recentEntries: FormEntry[]
+  allEntries: FormEntry[]
 }
 
 interface CacheData {
@@ -25,8 +32,8 @@ const CACHE_TTL = 5 * 60 * 1000
 
 let cache: CacheData | null = null
 
-export async function fetchFormData(): Promise<FormStats> {
-  if (cache && Date.now() - cache.timestamp < CACHE_TTL) {
+export async function fetchFormData(forceRefresh: boolean = false): Promise<FormStats> {
+  if (!forceRefresh && cache && Date.now() - cache.timestamp < CACHE_TTL) {
     return cache.data
   }
 
@@ -45,6 +52,12 @@ export async function fetchFormData(): Promise<FormStats> {
     }
 
     const csvText = await response.text()
+    
+    // Safety check: Ensure we're not parsing an HTML error/login page as a CSV
+    if (csvText.trim().startsWith('<')) {
+      throw new Error('Received HTML instead of CSV. Please check Google Sheet sharing permissions (Must be "Anyone with the link").')
+    }
+
     const entries = parseCSV(csvText)
     const stats = calculateStats(entries)
 
@@ -64,46 +77,48 @@ export function parseCSV(csvText: string): FormEntry[] {
 
   const headers = result.meta.fields || []
   
-  const nameCol = headers.find(h => h.toLowerCase().includes('name'))
-  const yearCol = headers.find(h => h.toLowerCase().includes('year'))
+  const nameCol = headers.find(h => h.toLowerCase().includes('hming') || h.toLowerCase().includes('name'))
   const emailCol = headers.find(h => h.toLowerCase().includes('email'))
-  const feesCol = headers.find(h => h.toLowerCase().includes('fee') || h.toLowerCase().includes('membership'))
+  const phoneCol = headers.find(h => h.toLowerCase().includes('phone') || h.toLowerCase().includes('whatsapp'))
+  const instCol = headers.find(h => h.toLowerCase().includes('institution') || h.toLowerCase().includes('zirna in'))
+  const courseCol = headers.find(h => h.toLowerCase().includes('course') || h.toLowerCase().includes('subject'))
+  const addressCol = headers.find(h => h.toLowerCase().includes('address'))
+  const bloodCol = headers.find(h => h.toLowerCase().includes('blood'))
+  const proofCol = headers.find(h => h.toLowerCase().includes('proof') || h.toLowerCase().includes('payment'))
 
-  return result.data.map((row) => ({
+  return result.data.map((row, index) => ({
+    id: String(index + 1).padStart(3, '0'), // Row index as Serial ID
     name: nameCol ? row[nameCol]?.trim() : '',
-    year: yearCol ? row[yearCol]?.trim() : '',
     email: emailCol ? row[emailCol]?.trim() : '',
-    fees: feesCol ? row[feesCol]?.trim() : '0',
+    phone: phoneCol ? row[phoneCol]?.trim() : '',
+    institution: instCol ? row[instCol]?.trim() : '',
+    course: courseCol ? row[courseCol]?.trim() : '',
+    address: addressCol ? row[addressCol]?.trim() : '',
+    bloodGroup: bloodCol ? row[bloodCol]?.trim() : '',
+    fees: proofCol && row[proofCol]?.trim() ? 'yes' : 'no',
   }))
 }
 
 export function calculateStats(entries: FormEntry[]): FormStats {
-  const byYear: Record<string, number> = {}
-  const byMonth: Record<string, number> = {}
+  const byInstitution: Record<string, number> = {}
+  const byBloodGroup: Record<string, number> = {}
+  const byCourse: Record<string, number> = {}
 
-  let totalFees = 0
   let paidCount = 0
-  let pendingCount = 0
 
   entries.forEach((entry) => {
-    if (entry.year) {
-      const isValidYear = /^\d{4}$/.test(entry.year.trim()) && parseInt(entry.year, 10) >= 1900
-      const yearKey = isValidYear ? entry.year.trim() : 'Unknown'
-      byYear[yearKey] = (byYear[yearKey] || 0) + 1
+    if (entry.institution) {
+      byInstitution[entry.institution] = (byInstitution[entry.institution] || 0) + 1
+    }
+    if (entry.bloodGroup) {
+      byBloodGroup[entry.bloodGroup] = (byBloodGroup[entry.bloodGroup] || 0) + 1
+    }
+    if (entry.course) {
+      byCourse[entry.course] = (byCourse[entry.course] || 0) + 1
     }
 
-    const fees = entry.fees?.toLowerCase() || ''
-    if (fees === 'yes' || fees === 'paid' || fees === 'true') {
+    if (entry.fees === 'yes') {
       paidCount++
-      totalFees += 1
-    } else if (fees && fees !== 'no' && fees !== 'false' && fees !== '0') {
-      const feeAmount = parseFloat(fees)
-      if (!isNaN(feeAmount)) {
-        totalFees += feeAmount
-        paidCount++
-      }
-    } else if (fees === 'no' || fees === 'false' || fees === '0') {
-      pendingCount++
     }
   })
 
@@ -112,9 +127,11 @@ export function calculateStats(entries: FormEntry[]): FormStats {
   return {
     totalMembers: entries.length,
     totalFees: paidCount,
-    byYear,
-    byMonth,
+    byInstitution,
+    byBloodGroup,
+    byCourse,
     recentEntries: sortedEntries,
+    allEntries: entries,
   }
 }
 
@@ -122,9 +139,11 @@ export function getDefaultStats(): FormStats {
   return {
     totalMembers: 0,
     totalFees: 0,
-    byYear: {},
-    byMonth: {},
+    byInstitution: {},
+    byBloodGroup: {},
+    byCourse: {},
     recentEntries: [],
+    allEntries: [],
   }
 }
 

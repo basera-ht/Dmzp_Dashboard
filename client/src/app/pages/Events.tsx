@@ -16,18 +16,18 @@ interface Event {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  Upcoming:  'bg-teal-100 text-teal-700',
-  Ongoing:   'bg-blue-100 text-blue-700',
+  Upcoming: 'bg-teal-100 text-teal-700',
+  Ongoing: 'bg-blue-100 text-blue-700',
   Completed: 'bg-green-100 text-green-700',
   Cancelled: 'bg-red-100 text-red-700',
 };
 
 const CARD_COLORS = [
-  { bg: 'bg-teal-50',   border: 'border-teal-200',   icon: 'text-teal-600'   },
-  { bg: 'bg-blue-50',   border: 'border-blue-200',   icon: 'text-blue-600'   },
+  { bg: 'bg-teal-50', border: 'border-teal-200', icon: 'text-teal-600' },
+  { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600' },
   { bg: 'bg-purple-50', border: 'border-purple-200', icon: 'text-purple-600' },
   { bg: 'bg-orange-50', border: 'border-orange-200', icon: 'text-orange-600' },
-  { bg: 'bg-green-50',  border: 'border-green-200',  icon: 'text-green-600'  },
+  { bg: 'bg-green-50', border: 'border-green-200', icon: 'text-green-600' },
 ];
 
 function formatDate(dateStr: string) {
@@ -55,12 +55,12 @@ function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
   useEffect(() => {
     if (event) {
       setForm({
-        title:     event.title || '',
-        date:      event.date ? event.date.split('T')[0] : '',
-        time:      event.time || '',
-        location:  event.location || '',
+        title: event.title || '',
+        date: event.date ? event.date.split('T')[0] : '',
+        time: event.time || '',
+        location: event.location || '',
         attendees: event.attendees || 0,
-        status:    event.status || 'Upcoming',
+        status: event.status || 'Upcoming',
       });
     } else {
       setForm({ title: '', date: '', time: '', location: '', attendees: 0, status: 'Upcoming' });
@@ -205,14 +205,14 @@ const TABS = ['All', 'Upcoming', 'Ongoing', 'Completed', 'Cancelled'] as const;
 type Tab = typeof TABS[number];
 
 export function Events() {
-  const [events, setEvents]             = useState<Event[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [tab, setTab]                   = useState<Tab>('All');
-  const [search, setSearch]             = useState('');
-  const [modalOpen, setModalOpen]       = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>('All');
+  const [search, setSearch] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [isSaving, setIsSaving]         = useState(false);
-  const [deleteId, setDeleteId]         = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const fetchEvents = async () => {
     try {
@@ -241,9 +241,9 @@ export function Events() {
       } else {
         response = await apiClient.post('/events', {
           ...data,
-          time:     data.time || 'TBD',
+          time: data.time || 'TBD',
           location: data.location || 'TBD',
-          date:     new Date(data.date as string).toISOString(),
+          date: new Date(data.date as string).toISOString(),
         });
       }
       if (response.success) {
@@ -272,16 +272,16 @@ export function Events() {
   };
 
   // Derived stats
-  const total     = events.length;
-  const upcoming  = events.filter(e => e.status === 'Upcoming').length;
+  const total = events.length;
+  const upcoming = events.filter(e => e.status === 'Upcoming').length;
   const completed = events.filter(e => e.status === 'Completed').length;
   const totalAttendees = events.reduce((s, e) => s + (e.attendees || 0), 0);
 
   // Filter
   const filtered = events.filter(e => {
-    const matchTab    = tab === 'All' || e.status === tab;
+    const matchTab = tab === 'All' || e.status === tab;
     const matchSearch = e.title.toLowerCase().includes(search.toLowerCase()) ||
-                        (e.location || '').toLowerCase().includes(search.toLowerCase());
+      (e.location || '').toLowerCase().includes(search.toLowerCase());
     return matchTab && matchSearch;
   });
 
@@ -291,7 +291,7 @@ export function Events() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-gray-900 mb-1">Events</h1>
-          <p className="text-sm text-gray-600">Manage all DMZP Association events</p>
+          <p className="text-sm text-gray-600">Manage all DMZP events</p>
         </div>
         <button
           onClick={() => { setEditingEvent(null); setModalOpen(true); }}
@@ -305,16 +305,16 @@ export function Events() {
       {/* ── Metric cards ── */}
       <div className="grid grid-cols-4 gap-6 mb-8">
         {[
-          { label: 'Total Events',      value: loading ? '…' : total.toString(),                icon: CalendarDays, color: 'teal'   },
-          { label: 'Upcoming',          value: loading ? '…' : upcoming.toString(),             icon: Calendar,     color: 'blue'   },
-          { label: 'Completed',         value: loading ? '…' : completed.toString(),            icon: CheckCircle2, color: 'green'  },
-          { label: 'Total Attendees',   value: loading ? '…' : totalAttendees.toLocaleString(), icon: Users,        color: 'purple' },
+          { label: 'Total Events', value: loading ? '…' : total.toString(), icon: CalendarDays, color: 'teal' },
+          { label: 'Upcoming', value: loading ? '…' : upcoming.toString(), icon: Calendar, color: 'blue' },
+          { label: 'Completed', value: loading ? '…' : completed.toString(), icon: CheckCircle2, color: 'green' },
+          { label: 'Total Attendees', value: loading ? '…' : totalAttendees.toLocaleString(), icon: Users, color: 'purple' },
         ].map(card => {
           const Icon = card.icon;
           const colorMap: Record<string, string> = {
-            teal:   'bg-teal-50 text-teal-600',
-            blue:   'bg-blue-50 text-blue-600',
-            green:  'bg-green-50 text-green-600',
+            teal: 'bg-teal-50 text-teal-600',
+            blue: 'bg-blue-50 text-blue-600',
+            green: 'bg-green-50 text-green-600',
             purple: 'bg-purple-50 text-purple-600',
           };
           return (
@@ -338,11 +338,10 @@ export function Events() {
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  tab === t
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === t
                     ? 'bg-teal-600 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 {t}
               </button>

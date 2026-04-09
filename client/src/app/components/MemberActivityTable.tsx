@@ -3,8 +3,10 @@ import { apiClient } from '../../lib/api';
 
 interface FormEntry {
   name?: string;
-  year?: string;
   email?: string;
+  phone?: string;
+  institution?: string;
+  course?: string;
   fees?: string;
 }
 
@@ -51,10 +53,13 @@ export function MemberActivityTable() {
                 Member Name
               </th>
               <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">
-                Email
+                WhatsApp
               </th>
               <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">
-                Year
+                Institution
+              </th>
+              <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">
+                Course
               </th>
               <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">
                 Fees Status
@@ -73,14 +78,17 @@ export function MemberActivityTable() {
             ) : (
               entries.map((entry, index) => (
                 <tr key={index} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                     {entry.name || 'N/A'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {entry.email || 'N/A'}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                    {entry.phone || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {entry.institution || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {entry.year || 'N/A'}
+                    {entry.course || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(entry.fees)}

@@ -7,6 +7,7 @@ import userRoutes from './userRoutes.js'
 import dashboardRoutes from './dashboardRoutes.js'
 import authRoutes from './authRoutes.js'
 import formDataRoutes from './formDataRoutes.js'
+import memberCardRoutes from './memberCardRoutes.js'
 
 const router = Router()
 
@@ -18,5 +19,6 @@ router.use('/reports', reportRoutes)
 router.use('/users', userRoutes)
 router.use('/dashboard', dashboardRoutes)
 router.use('/form-data', formDataRoutes)
+router.use('/member-card', memberCardRoutes)
 
 export default router

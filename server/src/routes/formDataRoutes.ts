@@ -22,4 +22,13 @@ router.get('/entries', async (req, res) => {
   res.status(result.success ? 200 : 500).json(result)
 })
 
+router.post('/hide', async (req, res) => {
+  const { email } = req.body
+  if (!email) {
+    return res.status(400).json({ success: false, error: 'Email is required' })
+  }
+  const result = await formDataController.hideEmail(email)
+  res.status(result.success ? 200 : 500).json(result)
+})
+
 export default router

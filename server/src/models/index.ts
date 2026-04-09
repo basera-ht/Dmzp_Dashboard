@@ -18,6 +18,12 @@ export const members = pgTable('members', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
+  phone: varchar('phone', { length: 50 }),
+  institution: varchar('institution', { length: 255 }),
+  course: varchar('course', { length: 255 }),
+  address: text('address'),
+  bloodGroup: varchar('blood_group', { length: 20 }),
+  fees: varchar('fees', { length: 20 }).default('no'),
   chapterId: integer('chapter_id').references(() => chapters.id),
   joinDate: timestamp('join_date').defaultNow().notNull(),
   dateOfBirth: timestamp('date_of_birth'),
@@ -60,6 +66,18 @@ export const users = pgTable('users', {
   role: varchar('role', { length: 50 }).default('Admin').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const membershipCardLogs = pgTable('membership_card_logs', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 255 }).notNull(),
+  sentAt: timestamp('sent_at').defaultNow().notNull(),
+})
+
+export const hiddenMembers = pgTable('hidden_members', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 export const settings = pgTable('settings', {

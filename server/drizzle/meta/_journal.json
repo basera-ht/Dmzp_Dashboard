@@ -15,6 +15,13 @@
       "when": 1775665133379,
       "tag": "0001_early_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775745974684,
+      "tag": "0002_flaky_terror",
+      "breakpoints": true
     }
   ]
 }

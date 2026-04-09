@@ -5,8 +5,9 @@ import { apiClient } from '../../lib/api';
 interface FormStats {
   totalMembers: number;
   totalFees: number;
-  byYear: Record<string, number>;
-  byMonth: Record<string, number>;
+  byInstitution: Record<string, number>;
+  byBloodGroup: Record<string, number>;
+  byCourse: Record<string, number>;
 }
 
 const COLORS = ['#14b8a6', '#0891b2', '#1e3a8a', '#9333ea', '#dc2626', '#ea580c', '#ca8a04', '#16a34a'];
@@ -52,15 +53,15 @@ export function DemographicsDonutChart() {
     fetchStats();
   }, []);
 
-  const data = stats?.byYear
-    ? Object.entries(stats.byYear).map(([name, value]) => ({ name, value }))
+  const data = stats?.byCourse
+    ? Object.entries(stats.byCourse).map(([name, value]) => ({ name, value }))
     : [];
 
   const totalMembers = stats?.totalMembers ?? 0;
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <h3 className="text-gray-900 mb-6">Member Distribution by Year</h3>
+      <h3 className="text-gray-900 mb-6">Member Distribution by Course</h3>
       {loading ? (
         <div className="h-[300px] flex items-center justify-center text-gray-500">Loading...</div>
       ) : data.length === 0 ? (

@@ -5,8 +5,9 @@ import { apiClient } from '../../lib/api';
 interface FormStats {
   totalMembers: number;
   totalFees: number;
-  byYear: Record<string, number>;
-  byMonth: Record<string, number>;
+  byInstitution: Record<string, number>;
+  byBloodGroup: Record<string, number>;
+  byCourse: Record<string, number>;
 }
 
 interface Report {
@@ -187,16 +188,13 @@ export function Reports() {
   // ── Derived stats ─────────────────────────────────────────────────────────
   const totalMembers = stats?.totalMembers ?? 0;
   const totalFees    = stats?.totalFees ?? 0;
-  const byYear       = stats?.byYear ?? {};
-  const avgPerYear   = totalMembers > 0
-    ? Math.round(totalMembers / Math.max(Object.keys(byYear).length, 1))
-    : 0;
+
 
   const statValues = [
     { label: 'Total Members',    value: loading ? '...' : totalMembers.toString(), icon: FileText,  color: 'teal'   },
     { label: 'Fees Collected',   value: loading ? '...' : totalFees.toString(),    icon: Calendar,  color: 'blue'   },
-    { label: 'Average per Year', value: loading ? '...' : avgPerYear.toString(),   icon: TrendingUp, color: 'purple' },
-    { label: 'Growth Rate',      value: loading ? '...' : '+12%',                  icon: TrendingUp, color: 'green'  },
+    { label: 'Paid Percentage',  value: loading ? '...' : totalMembers > 0 ? `${Math.round((totalFees/totalMembers)*100)}%` : '0%', icon: TrendingUp, color: 'purple' },
+    { label: 'Pending Dues',     value: loading ? '...' : (totalMembers - totalFees).toString(), icon: TrendingUp, color: 'green'  },
   ];
 
   const colorClasses: Record<string, string> = {
@@ -274,6 +272,71 @@ export function Reports() {
             </div>
           );
         })}
+      </div>
+
+      {/* ── Distributions ────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-6 mb-8">
+        {/* Course Distribution */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h3 className="text-gray-900 mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-teal-600" />
+            Course Distribution
+          </h3>
+          <div className="space-y-3">
+            {stats && Object.entries(stats.byCourse || {}).length > 0 ? (
+              Object.entries(stats.byCourse)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 5)
+                .map(([course, count]) => (
+                  <div key={course} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 truncate mr-4">{course}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-teal-500 rounded-full" 
+                          style={{ width: `${(count / totalMembers) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-gray-900">{count}</span>
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <p className="text-sm text-gray-400">No course data available</p>
+            )}
+          </div>
+        </div>
+
+        {/* Institution Distribution */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h3 className="text-gray-900 mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            Top Institutions
+          </h3>
+          <div className="space-y-3">
+            {stats && Object.entries(stats.byInstitution || {}).length > 0 ? (
+              Object.entries(stats.byInstitution)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 5)
+                .map(([inst, count]) => (
+                  <div key={inst} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 truncate mr-4">{inst}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-blue-500 rounded-full" 
+                          style={{ width: `${(count / totalMembers) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-gray-900">{count}</span>
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <p className="text-sm text-gray-400">No institution data available</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Generate New Report ──────────────────────────────────────────── */}

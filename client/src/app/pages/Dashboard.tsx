@@ -9,8 +9,9 @@ import { RefreshCw } from 'lucide-react';
 interface FormStats {
   totalMembers: number;
   totalFees: number;
-  byYear: Record<string, number>;
-  byMonth: Record<string, number>;
+  byInstitution: Record<string, number>;
+  byBloodGroup: Record<string, number>;
+  byCourse: Record<string, number>;
 }
 
 export function Dashboard() {
@@ -57,16 +58,18 @@ export function Dashboard() {
 
   const totalMembers = stats?.totalMembers ?? 0;
   const totalFees = stats?.totalFees ?? 0;
-  const byYear = stats?.byYear ?? {};
-  const topYear = Object.entries(byYear).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-  const activeChapters = 5;
+
+  const topCourse = stats?.byCourse 
+    ? Object.entries(stats.byCourse).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'
+    : 'N/A';
+
 
   return (
     <div className="p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-gray-900 mb-1">DMZP Association Dashboard</h1>
-          <p className="text-sm text-gray-600">Track DMZP member activity and chapter performance</p>
+          <h1 className="text-gray-900 mb-1">DMZP Dashboard</h1>
+          <p className="text-sm text-gray-600">Track DMZP members</p>
         </div>
         <button
           onClick={handleRefresh}
@@ -78,23 +81,21 @@ export function Dashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-3 gap-6 mb-8">
         <MetricCard
           title="Total Registered Members"
           value={loading ? '...' : totalMembers.toLocaleString()}
           trend={totalMembers > 0 ? { value: '+5%', positive: true } : undefined}
         />
-        <MetricCard
-          title="Active Chapters"
-          value={loading ? '...' : activeChapters.toString()}
-        />
+
         <MetricCard
           title="Fees Collected"
           value={loading ? '...' : totalFees.toString()}
         />
+
         <MetricCard
-          title="Most Active Year"
-          value={loading ? '...' : topYear}
+          title="Most Popular Course"
+          value={loading ? '...' : topCourse}
         />
       </div>
 
