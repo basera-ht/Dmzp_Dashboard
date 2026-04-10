@@ -13,6 +13,7 @@ interface FormEntry {
   address?: string;
   bloodGroup?: string;
   fees?: string;
+  source?: 'db' | 'sheet';
 }
 
 export function AllProfiles() {
@@ -171,7 +172,7 @@ export function AllProfiles() {
     if (!memberToDelete) return;
     setIsDeleting(true);
     try {
-      const res = memberToDelete.id
+      const res = memberToDelete.source === 'db'
         ? await apiClient.delete(`/members/${memberToDelete.id}`)
         : await apiClient.post('/form-data/hide', { email: memberToDelete.email });
 

@@ -79,7 +79,7 @@ export const formDataController = {
 
       // Map DB rows to FormEntry format
       const dbEntries: FormEntry[] = dbMembersRows.map(m => ({
-        id: m.id,
+        id: String(m.id),
         name: m.name,
         email: m.email,
         phone: m.phone || '',
@@ -88,10 +88,16 @@ export const formDataController = {
         address: m.address || '',
         bloodGroup: m.bloodGroup || '',
         fees: m.fees || 'no',
+        source: 'db'
       }))
 
       // Merge and filter
-      const allEntries = [...sheetStats.allEntries, ...dbEntries]
+      const sheetEntries = sheetStats.allEntries.map(e => ({
+        ...e,
+        source: 'sheet' as const
+      }))
+
+      const allEntries = [...sheetEntries, ...dbEntries]
         .filter(e => e.email && !hiddenEmails.has(e.email.toLowerCase()))
 
       const start = (page - 1) * limit
