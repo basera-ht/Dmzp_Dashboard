@@ -1,9 +1,12 @@
 import nodemailer from 'nodemailer'
-import dotenv from 'dotenv'
 import PDFDocument from 'pdfkit'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { config } from '../config/index.js'
 
-// Ensure .env is always fresh
-dotenv.config()
+// Ensure .env is loaded (though redundant if already loaded in app.ts)
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const LOGO_PATH = path.join(__dirname, '../assets/logo.png')
 
 interface MemberCardData {
   name: string
@@ -19,8 +22,7 @@ export function generateMembershipCardPdfBuffer(member: MemberCardData): Promise
     // A5 Landscape: 595.28 x 420 pts
     const doc = new PDFDocument({ size: 'A5', layout: 'landscape', margin: 0 })
     const chunks: Buffer[] = []
-    const logoRelPath = 'src/assets/logo.png'
-    const logoFullPath = `y:\\Code PR\\DmzpDashboardTur\\server\\${logoRelPath}`
+    const logoFullPath = LOGO_PATH
 
     doc.on('data', (chunk: Buffer) => chunks.push(chunk))
     doc.on('end', () => resolve(Buffer.concat(chunks)))
@@ -307,7 +309,7 @@ export async function sendMembershipCard(member: MemberCardData): Promise<{ succ
         },
         {
           filename: 'logo.png',
-          path: `y:\\Code PR\\DmzpDashboardTur\\server\\src\\assets\\logo.png`,
+          path: LOGO_PATH,
           cid: 'logo_img',
         },
       ],
