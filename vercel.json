@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npm run build --workspace=@app/client",
-  "outputDirectory": "client/dist",
+  "buildCommand": "cd client && npm run build",
   "installCommand": "npm install",
+  "outputDirectory": "client/dist",
   "functions": {
     "api/index.ts": {
       "runtime": "@vercel/node@3",
