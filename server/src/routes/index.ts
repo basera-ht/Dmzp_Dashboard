@@ -11,6 +11,14 @@ import memberCardRoutes from './memberCardRoutes.js'
 
 const router = Router()
 
+router.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  })
+})
+
 router.use('/auth', authRoutes)
 router.use('/chapters', chapterRoutes)
 router.use('/members', memberRoutes)

@@ -68,18 +68,8 @@ app.get('/health', (_req, res) => {
 app.use(rateLimiter)
 app.use('/api', routes)
 
-// Serve frontend static files in production
-if (config.nodeEnv === 'production') {
-  // In production, the client/dist folder is served by Vercel CDN directly.
-  // This fallback is only used when the server itself hosts the frontend.
-  const clientDist = path.join(__dirname, '../../client/dist')
-  app.use(express.static(clientDist))
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(clientDist, 'index.html'))
-  })
-} else {
-  app.use(notFoundHandler)
-}
+// Fallback for missing API routes
+app.use('/api/*', notFoundHandler)
 
 app.use(errorHandler)
 
