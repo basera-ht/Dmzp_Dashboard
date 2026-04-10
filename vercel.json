@@ -1,24 +1,26 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "outputDirectory": "client/dist",
+  "buildCommand": "npm run build --workspace=@app/client",
+  "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
-      "runtime": "@vercel/node@3",
       "maxDuration": 60,
       "memory": 1024,
       "includeFiles": "server/src/**"
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/index.ts"
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
     },
     {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
