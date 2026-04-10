@@ -21,10 +21,11 @@ export interface UploadResult {
 export async function uploadFileToS3(
   file: Buffer,
   fileName: string,
-  contentType: string
+  contentType: string,
+  folder?: string
 ): Promise<UploadResult> {
   try {
-    const key = `reports/${Date.now()}-${fileName}`
+    const key = `${folder || 'reports'}/${Date.now()}-${fileName}`
 
     const upload = new Upload({
       client: s3Client,
@@ -79,4 +80,18 @@ export async function deleteFileFromS3(key: string): Promise<boolean> {
 
 export function getPublicUrl(key: string): string {
   return `https://${config.aws.bucketName}.s3.${config.aws.region}.amazonaws.com/${key}`
+}
+
+export function getKeyFromUrl(url: string | null): string | null {
+  if (!url) return null
+  const bucketSubdomain = `${config.aws.bucketName}.s3.${config.aws.region}.amazonaws.com/`
+  if (url.includes(bucketSubdomain)) {
+    return url.split(bucketSubdomain)[1]
+  }
+  // Alternate format: s3.amazonaws.com/bucket/key
+  const alternateDomain = `s3.${config.aws.region}.amazonaws.com/${config.aws.bucketName}/`
+  if (url.includes(alternateDomain)) {
+    return url.split(alternateDomain)[1]
+  }
+  return null
 }

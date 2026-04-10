@@ -14,7 +14,7 @@ interface MemberCardData {
   fees?: string
 }
 
-function generateMembershipCardPdfBuffer(member: MemberCardData): Promise<Buffer> {
+export function generateMembershipCardPdfBuffer(member: MemberCardData): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
     // A5 Landscape: 595.28 x 420 pts
     const doc = new PDFDocument({ size: 'A5', layout: 'landscape', margin: 0 })
@@ -29,7 +29,7 @@ function generateMembershipCardPdfBuffer(member: MemberCardData): Promise<Buffer
     // 1. TOP HEADER BAR
     doc.rect(0, 0, 595.28, 45).fill('#f3f4f6')
 
-    // Header Logos (small)
+    // Header Logos (small) on both sides
     try {
       doc.image(logoFullPath, 90, 8, { width: 30 })
       doc.image(logoFullPath, 475, 8, { width: 30 })
@@ -37,56 +37,77 @@ function generateMembershipCardPdfBuffer(member: MemberCardData): Promise<Buffer
 
     // Organization Name
     doc.fillColor('#2e3859')
-      .fontSize(18)
+      .fontSize(16)
       .font('Helvetica-Bold')
-      .text('DELHI MIZO ZIRLAI PAWL', 0, 15, { align: 'center' })
+      .text('DELHI MIZO ZIRLAI PAWL', 0, 16, { align: 'center' })
 
     // 2. MAIN TITLE
     doc.fillColor('#2e3859')
-      .fontSize(28)
+      .fontSize(32)
       .font('Helvetica-Bold')
       .text('MEMBERSHIP CARD 2026-27', 0, 65, { align: 'center' })
 
-    // 3. MAIN LOGO (Left Side)
+    // 3. BACKGROUND DECORATION (MESH PATTERN)
+    // Draw subtle wavy lines for the mesh pattern in the background
+    doc.save()
+    doc.lineWidth(0.5).strokeColor('#e2e8f0').opacity(0.3)
+    for (let i = 0; i < 5; i++) {
+      doc.moveTo(300, 420 - (i * 15))
+        .bezierCurveTo(400, 380 - (i * 15), 500, 440 - (i * 15), 595, 360 - (i * 15))
+        .stroke()
+      
+      doc.moveTo(250, 420 - (i * 10))
+        .bezierCurveTo(350, 340 - (i * 10), 450, 460 - (i * 10), 540, 320 - (i * 10))
+        .stroke()
+    }
+    doc.restore()
+
+    // 4. MAIN LOGO (Left Side)
     try {
-      doc.image(logoFullPath, 40, 110, { width: 160 })
+      doc.image(logoFullPath, 45, 120, { width: 180 })
     } catch (e) { /* skip logo if not found */ }
 
-    // 4. INFO BOX (Right Side)
-    // Dark Blue Rounded Background
-    const boxX = 220
-    const boxY = 120
-    const boxW = 340
-    const boxH = 220
-    doc.roundedRect(boxX, boxY, boxW, boxH, 25).fill('#3f4a73')
+    // 5. INFO BOX (Right Side)
+    // Dark Blue Rounded Background (More rounded as requested)
+    const boxX = 235
+    const boxY = 125
+    const boxW = 325
+    const boxH = 210
+    doc.roundedRect(boxX, boxY, boxW, boxH, 30).fill('#2e3859') // Changed to same navy blue for consistency
 
     // Info Text (White)
     const labelX = boxX + 25
-    const separatorX = boxX + 130
-    const valueX = boxX + 150
+    const separatorX = boxX + 115
+    const valueX = boxX + 130
     let currentY = boxY + 45
 
     const fields = [
-      { label: 'Name', value: member.name },
-      { label: 'ID number', value: member.id || `DMZP-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}` },
+      { label: 'Name', value: member.name || 'N/A' },
+      { label: 'ID number', value: member.id || '002' },
       { label: 'Blood group', value: member.bloodGroup || 'N/A' },
       { label: 'Address', value: member.address || 'N/A' },
     ]
 
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14)
-
     fields.forEach(field => {
+      // Label
+      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14)
       doc.text(field.label, labelX, currentY)
+      
+      // Separator (Colon) - Perfectly aligned
       doc.text(':', separatorX, currentY)
-      doc.text(field.value || '', valueX, currentY, { width: boxW - 160 })
-      currentY += 40
+      
+      // Value - Slightly lighter or italic if needed, but bold white is clear
+      doc.font('Helvetica').fontSize(14)
+      doc.text(field.value, valueX, currentY, { width: boxW - 145, lineBreak: true })
+      
+      currentY += 38
     })
 
-    // 5. DECORATION (Dotted pattern at bottom left)
-    doc.fillColor('#cbd5e1')
-    for (let x = 50; x < 200; x += 15) {
-      for (let y = 350; y < 390; y += 15) {
-        doc.circle(x, y, 1.5).fill()
+    // 6. BOTTOM LEFT DOTS
+    doc.fillColor('#cbd5e1').opacity(0.4)
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 11; col++) {
+        doc.circle(45 + (col * 14), 365 + (row * 14), 2).fill()
       }
     }
 
@@ -155,56 +176,64 @@ function generateMembershipCardHtml(member: MemberCardData): string {
         <p style="margin:0 0 12px;color:#64748b;font-size:12px;text-align:center;">— Your Membership Card —</p>
 
         <!-- Card Container -->
-        <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;font-family:sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #eef2f6;border-radius:24px;overflow:hidden;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);">
           <!-- Header Bar -->
           <tr>
-            <td colspan="2" style="background:#f3f4f6;padding:12px;text-align:center;">
-              <span style="color:#2e3859;font-size:14px;font-weight:700;letter-spacing:1px;">DELHI MIZO ZIRLAI PAWL</span>
+            <td colspan="2" style="background:#f3f4f6;padding:12px;text-align:center;border-bottom: 1px solid #e5e7eb;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="20%" align="right"><img src="cid:logo_img" alt="" width="24" style="display:inline-block;" /></td>
+                  <td width="60%" align="center">
+                    <span style="color:#2e3859;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Delhi Mizo Zirlai Pawl</span>
+                  </td>
+                  <td width="20%" align="left"><img src="cid:logo_img" alt="" width="24" style="display:inline-block;" /></td>
+                </tr>
+              </table>
             </td>
           </tr>
           <!-- Card Title -->
           <tr>
-            <td colspan="2" style="padding:15px 10px;text-align:center;">
-              <h1 style="margin:0;color:#2e3859;font-size:24px;font-weight:800;">MEMBERSHIP CARD 2026-27</h1>
+            <td colspan="2" style="padding:20px 10px 10px;text-align:center;">
+              <h1 style="margin:0;color:#2e3859;font-size:28px;font-weight:900;letter-spacing:-0.5px;text-transform:uppercase;">Membership Card 2026-27</h1>
             </td>
           </tr>
           <!-- Main Body -->
           <tr>
             <!-- Logo Column -->
-            <td width="40%" style="padding:20px;vertical-align:middle;text-align:center;">
-              <img src="cid:logo_img" alt="Logo" width="120" style="display:inline-block;" />
+            <td width="38%" style="padding:20px 10px 30px 30px;vertical-align:middle;text-align:center;">
+              <img src="cid:logo_img" alt="Logo" width="160" style="display:inline-block;" />
             </td>
             <!-- Info Box Column -->
-            <td width="60%" style="padding:20px 25px 20px 10px;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#3f4a73;border-radius:20px;padding:25px;color:#ffffff;">
+            <td width="62%" style="padding:20px 35px 30px 10px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#2e3859;border-radius:30px;padding:30px;color:#ffffff;">
                 <tr>
-                  <td width="30%" style="padding-bottom:12px;font-size:13px;font-weight:700;white-space:nowrap;">Name</td>
-                  <td width="5%" style="padding-bottom:12px;font-size:13px;font-weight:700;">:</td>
-                  <td width="65%" style="padding-bottom:12px;font-size:13px;line-height:1.2;">${member.name}</td>
+                  <td width="35%" style="padding-bottom:12px;font-size:14px;font-weight:700;white-space:nowrap;color:#e2e8f0;">Name</td>
+                  <td width="5%" style="padding-bottom:12px;font-size:14px;font-weight:700;color:#e2e8f0;">:</td>
+                  <td width="60%" style="padding-bottom:12px;font-size:14px;font-weight:600;line-height:1.2;">${member.name}</td>
                 </tr>
                 <tr>
-                  <td style="padding-bottom:12px;font-size:13px;font-weight:700;white-space:nowrap;">ID number</td>
-                  <td style="padding-bottom:12px;font-size:13px;font-weight:700;">:</td>
-                  <td style="padding-bottom:12px;font-size:13px;font-family:monospace;">${member.id || 'N/A'}</td>
+                  <td style="padding-bottom:12px;font-size:14px;font-weight:700;white-space:nowrap;color:#e2e8f0;">ID number</td>
+                  <td style="padding-bottom:12px;font-size:14px;font-weight:700;color:#e2e8f0;">:</td>
+                  <td style="padding-bottom:12px;font-size:14px;font-family:monospace;font-weight:600;">${member.id || '001'}</td>
                 </tr>
                 <tr>
-                  <td style="padding-bottom:12px;font-size:13px;font-weight:700;white-space:nowrap;">Blood group</td>
-                  <td style="padding-bottom:12px;font-size:13px;font-weight:700;">:</td>
-                  <td style="padding-bottom:12px;font-size:13px;">${member.bloodGroup || 'N/A'}</td>
+                  <td style="padding-bottom:12px;font-size:14px;font-weight:700;white-space:nowrap;color:#e2e8f0;">Blood group</td>
+                  <td style="padding-bottom:12px;font-size:14px;font-weight:700;color:#e2e8f0;">:</td>
+                  <td style="padding-bottom:12px;font-size:14px;font-weight:600;">${member.bloodGroup || 'N/A'}</td>
                 </tr>
                 <tr>
-                  <td style="font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top;">Address</td>
-                  <td style="font-size:13px;font-weight:700;vertical-align:top;">:</td>
-                  <td style="font-size:13px;line-height:1.2;">${member.address || 'N/A'}</td>
+                  <td style="font-size:14px;font-weight:700;white-space:nowrap;vertical-align:top;color:#e2e8f0;">Address</td>
+                  <td style="font-size:14px;font-weight:700;vertical-align:top;color:#e2e8f0;">:</td>
+                  <td style="font-size:14px;line-height:1.3;font-weight:600;">${member.address || 'N/A'}</td>
                 </tr>
               </table>
             </td>
           </tr>
-          <!-- Dotted Footer Pattern (Approx) -->
+          <!-- Decoration -->
           <tr>
-            <td colspan="2" style="padding:10px 20px;text-align:left;">
-              <div style="font-size:18px;color:#cbd5e1;line-height:0.5;letter-spacing:10px;">•••••••••••</div>
-              <div style="font-size:18px;color:#cbd5e1;line-height:0.5;letter-spacing:10px;">•••••••••••</div>
+            <td colspan="2" style="padding:0 35px 30px;text-align:left;">
+              <div style="font-size:14px;color:#cbd5e1;line-height:0.8;letter-spacing:8px;opacity:0.6;">•••••••••••</div>
+              <div style="font-size:14px;color:#cbd5e1;line-height:0.8;letter-spacing:8px;opacity:0.6;">•••••••••••</div>
             </td>
           </tr>
         </table>
@@ -250,7 +279,7 @@ function createTransporter() {
 }
 
 // Initialize the transporter once at the module level for pooling/performance
-const transporter = createTransporter()
+export const transporter = createTransporter()
 
 export async function sendMembershipCard(member: MemberCardData): Promise<{ success: boolean; error?: string }> {
   try {

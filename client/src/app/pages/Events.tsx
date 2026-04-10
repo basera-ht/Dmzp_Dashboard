@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Calendar, MapPin, Users, Clock, Plus, Edit2, Trash2, X,
-  Search, CalendarDays, CheckCircle2, XCircle, Loader2,
+  Search, CalendarDays, CheckCircle2, XCircle, Loader2, Mail, Upload,
 } from 'lucide-react';
 import { apiClient } from '../../lib/api';
+import { EmailBroadcastModal } from '../components/EmailBroadcastModal';
 
 interface Event {
   id: number;
   title: string;
   date: string;
-  time: string;
-  location: string;
+  time?: string;
+  location?: string;
   attendees?: number;
   status?: string;
+  description?: string;
+  posterUrl?: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -40,7 +43,6 @@ function formatDate(dateStr: string) {
   }
 }
 
-// ── Event Modal ────────────────────────────────────────────────────────────────
 interface ModalProps {
   event?: Event | null;
   isOpen: boolean;
@@ -50,7 +52,15 @@ interface ModalProps {
 }
 
 function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
-  const [form, setForm] = useState({ title: '', date: '', time: '', location: '', attendees: 0, status: 'Upcoming' });
+  const [form, setForm] = useState({
+    title: '',
+    date: '',
+    time: '',
+    location: '',
+    attendees: 0,
+    status: 'Upcoming',
+    description: '',
+  });
 
   useEffect(() => {
     if (event) {
@@ -61,17 +71,26 @@ function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
         location: event.location || '',
         attendees: event.attendees || 0,
         status: event.status || 'Upcoming',
+        description: event.description || '',
       });
     } else {
-      setForm({ title: '', date: '', time: '', location: '', attendees: 0, status: 'Upcoming' });
+      setForm({
+        title: '',
+        date: '',
+        time: '',
+        location: '',
+        attendees: 0,
+        status: 'Upcoming',
+        description: '',
+      });
     }
   }, [event, isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center">
@@ -128,6 +147,17 @@ function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+              rows={3}
+              placeholder="Event description (optional)"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Expected Attendees</label>
@@ -175,7 +205,6 @@ function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
   );
 }
 
-// ── Delete Confirm Modal ───────────────────────────────────────────────────────
 function DeleteConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -200,7 +229,6 @@ function DeleteConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfir
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
 const TABS = ['All', 'Upcoming', 'Ongoing', 'Completed', 'Cancelled'] as const;
 type Tab = typeof TABS[number];
 
@@ -213,12 +241,32 @@ export function Events() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [uploadingPoster, setUploadingPoster] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchEvents = async () => {
     try {
       const response = await apiClient.get<{ data: Event[] }>('/events?limit=100');
       if (response.success && response.data) {
-        setEvents(response.data.data || []);
+        const eventsData = response.data.data || [];
+        
+        const eventsWithPosters = await Promise.all(
+          eventsData.map(async (event) => {
+            try {
+              const posterRes = await apiClient.get<{ posterUrl: string | null }>(`/events/${event.id}/poster`);
+              return {
+                ...event,
+                posterUrl: posterRes.success && (posterRes.data as any)?.posterUrl ? (posterRes.data as any).posterUrl : null,
+              };
+            } catch {
+              return { ...event, posterUrl: null };
+            }
+          })
+        );
+        
+        setEvents(eventsWithPosters);
       }
     } catch {
       // silent
@@ -229,23 +277,26 @@ export function Events() {
 
   useEffect(() => { fetchEvents(); }, []);
 
-  const handleSave = async (data: Partial<Event>) => {
+  const handleSave = async (data: any) => {
     setIsSaving(true);
     try {
+      const payload = {
+        title: data.title,
+        date: new Date(data.date).toISOString(),
+        time: data.time || 'TBD',
+        location: data.location || 'TBD',
+        attendees: data.attendees || 0,
+        status: data.status,
+        description: data.description || undefined,
+      };
+
       let response;
       if (editingEvent) {
-        response = await apiClient.put(`/events/${editingEvent.id}`, {
-          ...data,
-          date: new Date(data.date as string).toISOString(),
-        });
+        response = await apiClient.put(`/events/${editingEvent.id}`, payload);
       } else {
-        response = await apiClient.post('/events', {
-          ...data,
-          time: data.time || 'TBD',
-          location: data.location || 'TBD',
-          date: new Date(data.date as string).toISOString(),
-        });
+        response = await apiClient.post('/events', payload);
       }
+
       if (response.success) {
         setModalOpen(false);
         setEditingEvent(null);
@@ -271,13 +322,70 @@ export function Events() {
     }
   };
 
-  // Derived stats
+  const openEmailModal = (event: Event) => {
+    setSelectedEvent(event);
+    setEmailModalOpen(true);
+  };
+
+  const handleUploadClick = (eventId: number) => {
+    if (fileInputRef.current) {
+      fileInputRef.current.dataset.eventId = String(eventId);
+      fileInputRef.current.click();
+    }
+  };
+
+  const handlePosterUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const eventId = e.target.dataset.eventId;
+    
+    if (!file || !eventId) return;
+    
+    setUploadingPoster(parseInt(eventId));
+    
+    try {
+      const formData = new FormData();
+      formData.append('poster', file);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/events/${eventId}/poster`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+        body: formData,
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        await fetchEvents();
+      } else {
+        alert(result.error || 'Failed to upload poster');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Failed to upload poster');
+    } finally {
+      setUploadingPoster(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeletePoster = async (eventId: number) => {
+    try {
+      await apiClient.delete(`/events/${eventId}/poster`);
+      await fetchEvents();
+    } catch {
+      alert('Failed to delete poster');
+    }
+  };
+
   const total = events.length;
   const upcoming = events.filter(e => e.status === 'Upcoming').length;
   const completed = events.filter(e => e.status === 'Completed').length;
   const totalAttendees = events.reduce((s, e) => s + (e.attendees || 0), 0);
 
-  // Filter
   const filtered = events.filter(e => {
     const matchTab = tab === 'All' || e.status === tab;
     const matchSearch = e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -287,7 +395,14 @@ export function Events() {
 
   return (
     <div className="p-8">
-      {/* ── Header ── */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*,.pdf"
+        onChange={handlePosterUpload}
+        className="hidden"
+      />
+      
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-gray-900 mb-1">Events</h1>
@@ -302,7 +417,6 @@ export function Events() {
         </button>
       </div>
 
-      {/* ── Metric cards ── */}
       <div className="grid grid-cols-4 gap-6 mb-8">
         {[
           { label: 'Total Events', value: loading ? '…' : total.toString(), icon: CalendarDays, color: 'teal' },
@@ -329,10 +443,8 @@ export function Events() {
         })}
       </div>
 
-      {/* ── Filters ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          {/* Tabs */}
           <div className="flex gap-1">
             {TABS.map(t => (
               <button
@@ -348,7 +460,6 @@ export function Events() {
             ))}
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -361,7 +472,6 @@ export function Events() {
           </div>
         </div>
 
-        {/* ── Event grid ── */}
         {loading ? (
           <div className="flex items-center justify-center py-16 text-gray-500">
             <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…
@@ -375,12 +485,71 @@ export function Events() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-6">
             {filtered.map((event, idx) => {
               const c = CARD_COLORS[idx % CARD_COLORS.length];
+              const isUploading = uploadingPoster === event.id;
               return (
                 <div
                   key={event.id}
                   className={`${c.bg} ${c.border} border rounded-xl p-5 hover:shadow-md transition-all`}
                 >
-                  {/* Title row */}
+                  <div className="relative mb-5 group overflow-hidden rounded-xl h-44 bg-white ring-1 ring-gray-100 shadow-sm transition-all duration-300 hover:shadow-md">
+                    {event.posterUrl ? (
+                      <>
+                        <img
+                          src={event.posterUrl}
+                          alt={event.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.classList.add('bg-gradient-to-br', 'from-teal-50', 'to-blue-50');
+                              if (!parent.querySelector('.fallback-icon')) {
+                                const fallback = document.createElement('div');
+                                fallback.className = 'fallback-icon absolute inset-0 flex items-center justify-center opacity-40';
+                                fallback.innerHTML = `
+                                  <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1" fill="none" class="text-teal-600">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                  </svg>
+                                `;
+                                parent.appendChild(fallback);
+                              }
+                            }
+                          }}
+                        />
+                        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                        
+                        <button
+                          onClick={() => handleDeletePoster(event.id)}
+                          className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-sm hover:bg-red-500 hover:text-white z-10"
+                          title="Remove poster"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => handleUploadClick(event.id)}
+                        disabled={isUploading}
+                        className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-50/50 hover:bg-white transition-colors group"
+                      >
+                        {isUploading ? (
+                          <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 group-hover:text-teal-600 transition-colors">
+                              <Upload className="w-5 h-5" />
+                            </div>
+                            <span className="text-xs font-medium text-gray-500 group-hover:text-teal-600 transition-colors">Add event poster</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-3 min-w-0">
                       <div className={`w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0 shadow-sm`}>
@@ -396,6 +565,13 @@ export function Events() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <button
+                        onClick={() => openEmailModal(event)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-white/60"
+                        title="Send Email"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => { setEditingEvent(event); setModalOpen(true); }}
                         className="p-1.5 text-gray-400 hover:text-teal-600 transition-colors rounded-lg hover:bg-white/60"
@@ -413,7 +589,6 @@ export function Events() {
                     </div>
                   </div>
 
-                  {/* Details */}
                   <div className="space-y-2 text-xs text-gray-600">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5 shrink-0" />
@@ -439,7 +614,6 @@ export function Events() {
         )}
       </div>
 
-      {/* ── Modals ── */}
       <EventModal
         event={editingEvent}
         isOpen={modalOpen}
@@ -454,6 +628,12 @@ export function Events() {
           onConfirm={handleDelete}
         />
       )}
+
+      <EmailBroadcastModal
+        event={selectedEvent}
+        isOpen={emailModalOpen}
+        onClose={() => { setEmailModalOpen(false); setSelectedEvent(null); }}
+      />
     </div>
   );
 }

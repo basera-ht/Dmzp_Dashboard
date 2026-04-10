@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 interface ApiError {
   message: string
@@ -122,6 +122,52 @@ class ApiClient {
 
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' })
+  }
+
+  async postForm<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    const url = `${this.baseUrl}${endpoint}`
+
+    const headers: Record<string, string> = {}
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: formData,
+      })
+
+      const data = await response.json()
+      return data
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Upload failed' }
+    }
+  }
+
+  async putForm<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    const url = `${this.baseUrl}${endpoint}`
+
+    const headers: Record<string, string> = {}
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers,
+        credentials: 'include',
+        body: formData,
+      })
+
+      const data = await response.json()
+      return data
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Upload failed' }
+    }
   }
 }
 

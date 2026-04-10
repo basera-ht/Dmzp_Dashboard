@@ -150,3 +150,21 @@ export function getDefaultStats(): FormStats {
 export function clearCache(): void {
   cache = null
 }
+
+export async function getMemberEmailsFromSheets(forceRefresh: boolean = false): Promise<{ email: string; name?: string }[]> {
+  try {
+    const stats = await fetchFormData(forceRefresh)
+    if (!stats.allEntries || stats.allEntries.length === 0) {
+      console.warn('[GoogleSheets] No entries found in the sheet (or fetch failed)')
+    }
+    return stats.allEntries
+      .filter(entry => entry.email)
+      .map(entry => ({
+        email: entry.email!,
+        name: entry.name,
+      }))
+  } catch (err) {
+    console.error('[GoogleSheets] Error getting member emails:', err)
+    return []
+  }
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Download, UserPlus, X, Mail, RefreshCw, CheckCircle2, Trash2, Loader2 } from 'lucide-react';
-import { apiClient } from '../../lib/api';
+import { apiClient, API_BASE_URL } from '../../lib/api';
 
 interface FormEntry {
   id?: string;
@@ -64,7 +64,7 @@ export function AllProfiles() {
   }, []);
 
   const filteredEntries = entries.filter(entry => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       entry.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.phone?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -90,7 +90,7 @@ export function AllProfiles() {
       `"${entry.course || 'N/A'}"`,
       `"${entry.fees === 'yes' ? 'Fees Paid' : 'Pending'}"`
     ]);
-    
+
     const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -197,7 +197,7 @@ export function AllProfiles() {
           <h1 className="text-gray-900 mb-1">All Member Profiles</h1>
           <p className="text-sm text-gray-600">Browse and manage all registered members</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsAddModalOpen(true)}
           className="flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-colors"
         >
@@ -218,7 +218,7 @@ export function AllProfiles() {
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
-          <button 
+          <button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
@@ -267,7 +267,7 @@ export function AllProfiles() {
                     <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(entry.fees)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-3">
-                        <button 
+                        <button
                           onClick={() => {
                             setSelectedMember(entry);
                             setIsViewModalOpen(true);
@@ -321,35 +321,35 @@ export function AllProfiles() {
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md my-8">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-900">Add New Member</h2>
-              <button 
+              <button
                 onClick={() => setIsAddModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleAddMember} className="p-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     value={newMember.name}
-                    onChange={(e) => setNewMember({...newMember, name: e.target.value})}
+                    onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter full name"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     required
                     value={newMember.email}
-                    onChange={(e) => setNewMember({...newMember, email: e.target.value})}
+                    onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter email address"
                   />
@@ -357,10 +357,10 @@ export function AllProfiles() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={newMember.phone}
-                    onChange={(e) => setNewMember({...newMember, phone: e.target.value})}
+                    onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="e.g. 93664xxxxx"
                   />
@@ -369,20 +369,20 @@ export function AllProfiles() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Institution</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newMember.institution}
-                      onChange={(e) => setNewMember({...newMember, institution: e.target.value})}
+                      onChange={(e) => setNewMember({ ...newMember, institution: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                       placeholder="School/College"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newMember.course}
-                      onChange={(e) => setNewMember({...newMember, course: e.target.value})}
+                      onChange={(e) => setNewMember({ ...newMember, course: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                       placeholder="e.g. B.Tech"
                     />
@@ -391,9 +391,9 @@ export function AllProfiles() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <textarea 
+                  <textarea
                     value={newMember.address}
-                    onChange={(e) => setNewMember({...newMember, address: e.target.value})}
+                    onChange={(e) => setNewMember({ ...newMember, address: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Residential address"
                     rows={2}
@@ -403,19 +403,19 @@ export function AllProfiles() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newMember.bloodGroup}
-                      onChange={(e) => setNewMember({...newMember, bloodGroup: e.target.value})}
+                      onChange={(e) => setNewMember({ ...newMember, bloodGroup: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                       placeholder="e.g. O+"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Fees Paid?</label>
-                    <select 
+                    <select
                       value={newMember.fees}
-                      onChange={(e) => setNewMember({...newMember, fees: e.target.value})}
+                      onChange={(e) => setNewMember({ ...newMember, fees: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     >
                       <option value="yes">Yes</option>
@@ -423,17 +423,17 @@ export function AllProfiles() {
                     </select>
                   </div>
                 </div>
-                </div>
+              </div>
 
               <div className="mt-8 flex justify-end gap-3">
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={isSubmitting}
                   className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
@@ -450,7 +450,7 @@ export function AllProfiles() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden my-8">
             <div className="relative h-28 bg-teal-600 flex-shrink-0">
-              <button 
+              <button
                 onClick={() => setIsViewModalOpen(false)}
                 className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors"
               >
@@ -504,51 +504,49 @@ export function AllProfiles() {
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Address</p>
                   <p className="text-gray-900 text-sm whitespace-pre-wrap">{selectedMember.address || 'N/A'}</p>
                 </div>
-              </div>
-
-              {/* Membership Card Preview (Exact Model Replication) */}
-              <div className="mt-4 border border-gray-100 rounded-2xl overflow-hidden shadow-sm bg-white font-sans">
+              </div>              {/* Membership Card Preview (Exact Model Replication) */}
+              <div className="mt-4 border border-gray-100 rounded-3xl overflow-hidden shadow-md bg-white font-sans relative">
                 {/* Header Bar */}
-                <div className="bg-gray-50 py-2 border-b border-gray-100 flex items-center justify-center gap-3">
+                <div className="bg-[#f3f4f6] py-3 border-b border-gray-200 flex items-center justify-between px-8">
                   <img src="/logo.png" alt="" className="w-6 h-6 object-contain" />
-                  <span className="text-[10px] font-bold text-[#2e3859] tracking-widest uppercase">Delhi Mizo Zirlai Pawl</span>
+                  <span className="text-[11px] font-extrabold text-[#2e3859] tracking-[0.2em] uppercase">Delhi Mizo Zirlai Pawl</span>
                   <img src="/logo.png" alt="" className="w-6 h-6 object-contain" />
                 </div>
 
-                <div className="p-4">
+                <div className="p-6 relative z-10">
                   {/* Card Title */}
-                  <div className="text-center mb-4">
-                    <h4 className="text-[#2e3859] text-lg font-extrabold tracking-tight">MEMBERSHIP CARD 2026-27</h4>
+                  <div className="text-center mb-6">
+                    <h4 className="text-[#2e3859] text-2xl font-[900] tracking-tighter uppercase">MEMBERSHIP CARD 2026-27</h4>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-6">
                     {/* Left Side: Large Logo */}
-                    <div className="w-1/3 flex justify-center">
-                      <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
+                    <div className="w-[35%] flex justify-center">
+                      <img src="/logo.png" alt="Logo" className="w-28 h-28 object-contain" />
                     </div>
 
                     {/* Right Side: Dark Blue Info Box */}
-                    <div className="w-2/3 bg-[#3f4a73] rounded-3xl p-5 text-white shadow-inner">
-                      <div className="space-y-2 text-[11px]">
-                        <div className="flex">
-                          <span className="w-20 font-bold">Name</span>
-                          <span className="mx-1">:</span>
-                          <span className="flex-1 truncate">{selectedMember.name}</span>
+                    <div className="w-[65%] bg-[#2e3859] rounded-[40px] p-7 text-white shadow-xl">
+                      <div className="space-y-3 text-[12px]">
+                        <div className="flex border-b border-white/5 pb-1">
+                          <span className="w-24 font-bold text-gray-300">Name</span>
+                          <span className="mx-2 font-bold">:</span>
+                          <span className="flex-1 font-semibold truncate text-[13px]">{selectedMember.name}</span>
+                        </div>
+                        <div className="flex border-b border-white/5 pb-1">
+                          <span className="w-24 font-bold text-gray-300">ID number</span>
+                          <span className="mx-2 font-bold">:</span>
+                          <span className="flex-1 font-mono font-semibold text-[13px]">{selectedMember.id || '001'}</span>
+                        </div>
+                        <div className="flex border-b border-white/5 pb-1">
+                          <span className="w-24 font-bold text-gray-300">Blood group</span>
+                          <span className="mx-2 font-bold">:</span>
+                          <span className="flex-1 font-semibold text-[13px]">{selectedMember.bloodGroup || 'N/A'}</span>
                         </div>
                         <div className="flex">
-                          <span className="w-20 font-bold">ID number</span>
-                          <span className="mx-1">:</span>
-                          <span className="flex-1 font-mono tracking-tighter italic opacity-90">{selectedMember.id || 'Pending'}</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-20 font-bold">Blood group</span>
-                          <span className="mx-1">:</span>
-                          <span className="flex-1">{selectedMember.bloodGroup || 'N/A'}</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-20 font-bold">Address</span>
-                          <span className="mx-1">:</span>
-                          <span className="flex-1 line-clamp-2 leading-tight opacity-90">{selectedMember.address || 'N/A'}</span>
+                          <span className="w-24 font-bold text-gray-300">Address</span>
+                          <span className="mx-2 font-bold">:</span>
+                          <span className="flex-1 font-semibold text-[13px] line-clamp-2 leading-tight">{selectedMember.address || 'N/A'}</span>
                         </div>
                       </div>
                     </div>
@@ -556,15 +554,25 @@ export function AllProfiles() {
                 </div>
 
                 {/* Dotted Pattern Decor */}
-                <div className="px-6 pb-4 opacity-20">
-                  <div className="flex gap-2">
-                    {[...Array(8)].map((_, i) => <div key={i} className="w-1 h-1 bg-gray-400 rounded-full" />)}
+                <div className="px-8 pb-6 relative z-10 flex flex-col gap-1.5 opacity-30">
+                  <div className="flex gap-2.5">
+                    {[...Array(11)].map((_, i) => <div key={i} className="w-1.5 h-1.5 bg-[#2e3859] rounded-full" />)}
                   </div>
-                  <div className="flex gap-2 mt-1">
-                    {[...Array(8)].map((_, i) => <div key={i} className="w-1 h-1 bg-gray-400 rounded-full" />)}
+                  <div className="flex gap-2.5 ml-1">
+                    {[...Array(11)].map((_, i) => <div key={i} className="w-1.5 h-1.5 bg-[#2e3859] rounded-full" />)}
                   </div>
                 </div>
+
+                {/* Decorative Mesh background (approximation for web) */}
+                <div className="absolute bottom-0 right-0 w-64 h-32 opacity-[0.03] pointer-events-none">
+                  <svg viewBox="0 0 200 100" className="w-full h-full">
+                    <path d="M0 80 Q 50 10, 100 80 T 200 80" fill="none" stroke="#2e3859" strokeWidth="2" />
+                    <path d="M0 70 Q 50 0, 100 70 T 200 70" fill="none" stroke="#2e3859" strokeWidth="2" />
+                    <path d="M0 90 Q 50 20, 100 90 T 200 90" fill="none" stroke="#2e3859" strokeWidth="2" />
+                  </svg>
+                </div>
               </div>
+
 
               {/* Send Card Actions */}
               {cardError && (
@@ -579,13 +587,21 @@ export function AllProfiles() {
               )}
 
               <div className="flex justify-end gap-3">
-                <button 
+                <button
                   onClick={() => setIsViewModalOpen(false)}
                   className="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
                 >
                   Close
                 </button>
-                <button 
+                <a
+                  href={`${API_BASE_URL}/member-card/preview?name=${encodeURIComponent(selectedMember.name || '')}&email=${encodeURIComponent(selectedMember.email || '')}&id=${encodeURIComponent(selectedMember.id || '')}&bloodGroup=${encodeURIComponent(selectedMember.bloodGroup || '')}&address=${encodeURIComponent(selectedMember.address || '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                >
+                  <Download className="w-4 h-4" /> Download PDF Preview
+                </a>
+                <button
                   onClick={() => handleSendCard(selectedMember)}
                   disabled={sendingCardFor === selectedMember.email || !selectedMember.email}
                   className="flex items-center gap-2 px-5 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium text-sm disabled:opacity-50"

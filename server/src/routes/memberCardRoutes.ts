@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { sendMembershipCard } from '../services/emailService.js'
+import { sendMembershipCard, generateMembershipCardPdfBuffer } from '../services/emailService.js'
 import type { ApiResponse } from '../types/index.js'
 
 const router = Router()
@@ -17,6 +17,34 @@ router.get('/test', async (_req, res) => {
     fees: 'yes',
   })
   res.json({ ...result, sentTo: testEmail })
+})
+
+router.get('/preview', async (req, res) => {
+  const { name, email, fees, id, bloodGroup, address } = req.query
+
+  if (!name) {
+    res.status(400).send('Name is required')
+    return
+  }
+
+  try {
+    const pdfBuffer = await generateMembershipCardPdfBuffer({
+      name: name as string,
+      email: (email as string) || '',
+      fees: (fees as string) || 'no',
+      id: id as string,
+      bloodGroup: bloodGroup as string,
+      address: address as string,
+    })
+
+    const safeName = (name as string).replace(/[^a-zA-Z0-9]/g, '_')
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename=DMZP_Card_${safeName}.pdf`)
+    res.send(pdfBuffer)
+  } catch (error) {
+    console.error('[Card Preview] Error:', error)
+    res.status(500).send('Failed to generate PDF preview')
+  }
 })
 
 router.post('/send', async (req, res) => {

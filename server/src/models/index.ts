@@ -47,6 +47,21 @@ export const events = pgTable('events', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+export const eventEmailLogs = pgTable('event_email_logs', {
+  id: serial('id').primaryKey(),
+  eventId: integer('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  status: varchar('status', { length: 50 }).default('sent').notNull(),
+  sentAt: timestamp('sent_at').defaultNow().notNull(),
+})
+
+export const eventPosters = pgTable('event_posters', {
+  id: serial('id').primaryKey(),
+  eventId: integer('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull().unique(),
+  posterUrl: varchar('poster_url', { length: 500 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export const reports = pgTable('reports', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
@@ -99,6 +114,10 @@ export type Member = typeof members.$inferSelect
 export type NewMember = typeof members.$inferInsert
 export type Event = typeof events.$inferSelect
 export type NewEvent = typeof events.$inferInsert
+export type EventEmailLog = typeof eventEmailLogs.$inferSelect
+export type NewEventEmailLog = typeof eventEmailLogs.$inferInsert
+export type EventPoster = typeof eventPosters.$inferSelect
+export type NewEventPoster = typeof eventPosters.$inferInsert
 export type Report = typeof reports.$inferSelect
 export type NewReport = typeof reports.$inferInsert
 export type User = typeof users.$inferSelect
