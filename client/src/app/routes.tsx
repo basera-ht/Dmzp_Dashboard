@@ -8,6 +8,7 @@ import { Reports } from './pages/Reports'
 import { Events } from './pages/Events'
 import { Settings } from './pages/Settings'
 import { LoginPage } from './pages/Login'
+import { SignupPage } from './pages/Signup'
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return <ProtectedRoute>{children}</ProtectedRoute>
@@ -33,10 +34,22 @@ function LoginLayout() {
   )
 }
 
+function SignupLayout() {
+  return (
+    <GuestLayout>
+      <SignupPage />
+    </GuestLayout>
+  )
+}
+
 export const router = createBrowserRouter([
   {
     path: '/login',
     Component: LoginLayout,
+  },
+  {
+    path: '/signup',
+    Component: SignupLayout,
   },
   {
     path: '/',
