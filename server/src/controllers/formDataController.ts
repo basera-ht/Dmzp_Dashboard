@@ -112,12 +112,21 @@ export const formDataController = {
   },
 
   async hideEmail(email: string): Promise<ApiResponse<{ email: string }>> {
+    console.log(`[HideMember] Starting hide for: ${email}`)
     try {
-      await db.insert(hiddenMembers).values({ email }).onConflictDoNothing()
+      console.log(`[HideMember] Inserting into hidden_members...`)
+      const result = await db
+        .insert(hiddenMembers)
+        .values({ email: email.toLowerCase() })
+        .onConflictDoNothing({ target: hiddenMembers.email })
+        .returning()
+      
+      console.log(`[HideMember] Insert complete. Result:`, JSON.stringify(result))
       return { success: true, data: { email } }
-    } catch (error) {
-      console.error('Error hiding email:', error)
-      return { success: false, error: 'Failed to hide member' }
+    } catch (error: any) {
+      console.error(`[HideMember] Error during hide operation:`, error.message)
+      console.error(`[HideMember] Full error:`, error)
+      return { success: false, error: `Failed to hide member: ${error.message}` }
     }
   },
 }
