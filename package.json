@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npm run dev --workspace=@app/client",
     "dev:server": "npm run dev --workspace=@app/server",
-    "build": "npm run build --workspace=@app/client",
+    "build": "npm run build:server && npm run build:client",
     "build:client": "npm run build --workspace=@app/client",
     "build:server": "npm run build --workspace=@app/server",
     "db:generate": "npm run db:generate --workspace=@app/server",
