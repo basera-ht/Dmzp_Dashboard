@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Download, UserPlus, X, Mail, RefreshCw, CheckCircle2, Trash2, Loader2 } from 'lucide-react';
 import { apiClient, API_BASE_URL } from '../../lib/api';
+import { toast } from 'sonner';
 
 interface FormEntry {
   id?: string;
@@ -175,16 +176,18 @@ export function AllProfiles() {
         : await apiClient.post('/form-data/hide', { email: memberToDelete.email });
 
       if (res.success) {
-        setEntries(entries.filter(e => {
+        setEntries(prev => prev.filter(e => {
           if (memberToDelete.id) return e.id !== memberToDelete.id;
           return e.email !== memberToDelete.email;
         }));
+        toast.success(memberToDelete.id ? 'Member deleted successfully' : 'Member hidden successfully');
         setMemberToDelete(null);
       } else {
-        alert(res.error || 'Failed to delete member');
+        toast.error(res.error || 'Failed to delete member');
       }
-    } catch {
-      alert('Network error — could not delete member');
+    } catch (err: any) {
+      console.error('Deletion error:', err);
+      toast.error(err.message || 'Network error — could not delete member');
     } finally {
       setIsDeleting(false);
     }
