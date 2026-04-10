@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "",
   "installCommand": "echo 'No install needed'",
   "outputDirectory": "client/dist",
   "functions": {
