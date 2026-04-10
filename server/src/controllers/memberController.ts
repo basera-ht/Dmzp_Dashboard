@@ -1,6 +1,6 @@
 import { eq, sql, like, desc } from 'drizzle-orm'
 import { db } from '../database/index.js'
-import { members, chapters } from '../models/index.js'
+import { members, chapters, hiddenMembers, membershipCardLogs } from '../models/index.js'
 import type { NewMember } from '../models/index.js'
 import type { ApiResponse, PaginatedResponse } from '../types/index.js'
 
@@ -105,12 +105,30 @@ export const memberController = {
   },
 
   async delete(id: number): Promise<ApiResponse<any>> {
-    const result = await db.delete(members).where(eq(members.id, id)).returning()
-    
-    if (result.length === 0) {
+    const deletedMember = await db.transaction(async (tx) => {
+      const existingMember = await tx
+        .select({ id: members.id, email: members.email })
+        .from(members)
+        .where(eq(members.id, id))
+        .limit(1)
+
+      if (existingMember.length === 0) {
+        return null
+      }
+
+      const email = existingMember[0].email
+      await tx.delete(members).where(eq(members.id, id))
+      await tx.delete(hiddenMembers).where(eq(hiddenMembers.email, email.toLowerCase()))
+      await tx.delete(membershipCardLogs).where(eq(membershipCardLogs.email, email))
+      await tx.delete(membershipCardLogs).where(eq(membershipCardLogs.email, email.toLowerCase()))
+
+      return existingMember[0]
+    })
+
+    if (!deletedMember) {
       return { success: false, error: 'Member not found' }
     }
-    
+
     return { success: true, message: 'Member deleted successfully' }
   },
 

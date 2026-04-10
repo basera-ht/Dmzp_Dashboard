@@ -195,8 +195,8 @@ export function AllProfiles() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-gray-900 mb-1">All Member Profiles</h1>
           <p className="text-sm text-gray-600">Browse and manage all registered members</p>
@@ -210,8 +210,8 @@ export function AllProfiles() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex gap-4 items-center">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
           <div className="flex-1 relative">
             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -370,7 +370,7 @@ export function AllProfiles() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Institution</label>
                     <input
@@ -404,7 +404,7 @@ export function AllProfiles() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
                     <input
@@ -478,7 +478,7 @@ export function AllProfiles() {
                 {getStatusBadge(selectedMember.fees)}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">WhatsApp</p>
                   <p className="text-gray-900 font-semibold font-mono">{selectedMember.phone || 'N/A'}</p>

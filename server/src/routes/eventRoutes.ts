@@ -14,6 +14,64 @@ import {
 import type { NewEvent } from '../models/index.js'
 
 const router = Router()
+const EVENT_STATUSES = new Set(['Upcoming', 'Ongoing', 'Completed', 'Cancelled'])
+
+function normalizeEventPayload(payload: Record<string, any>, isUpdate = false): { data?: Partial<NewEvent>; error?: string } {
+  const hasOwn = (key: string) => Object.prototype.hasOwnProperty.call(payload, key)
+  const title = typeof payload.title === 'string' ? payload.title.trim() : ''
+  const locationInput = typeof payload.location === 'string' ? payload.location.trim() : ''
+  const timeInput = typeof payload.time === 'string' ? payload.time.trim() : ''
+  const descriptionInput = typeof payload.description === 'string' ? payload.description.trim() : undefined
+
+  if (!isUpdate || hasOwn('title')) {
+    if (!title) return { error: 'Title is required' }
+    if (title.length > 255) return { error: 'Title must be 255 characters or fewer' }
+  }
+
+  if (!isUpdate || hasOwn('date')) {
+    const parsedDate = new Date(payload.date as string)
+    if (Number.isNaN(parsedDate.getTime())) return { error: 'A valid date is required' }
+  }
+
+  if (!isUpdate || hasOwn('time')) {
+    if (timeInput.length > 50) return { error: 'Time must be 50 characters or fewer' }
+  }
+
+  if (!isUpdate || hasOwn('location')) {
+    if (locationInput.length > 255) return { error: 'Location must be 255 characters or fewer' }
+  }
+
+  if (!isUpdate || hasOwn('status')) {
+    if (typeof payload.status !== 'string' || !EVENT_STATUSES.has(payload.status)) {
+      return { error: 'Invalid event status' }
+    }
+  }
+
+  const attendeesValue = payload.attendees === undefined ? undefined : Number.parseInt(String(payload.attendees), 10)
+  if (attendeesValue !== undefined && (Number.isNaN(attendeesValue) || attendeesValue < 0)) {
+    return { error: 'Attendees must be a non-negative number' }
+  }
+
+  const chapterIdValue = payload.chapterId === undefined || payload.chapterId === null || payload.chapterId === ''
+    ? undefined
+    : Number.parseInt(String(payload.chapterId), 10)
+  if (chapterIdValue !== undefined && Number.isNaN(chapterIdValue)) {
+    return { error: 'Invalid chapterId value' }
+  }
+
+  const data: Partial<NewEvent> = {}
+  if (!isUpdate || hasOwn('title')) data.title = title
+  if (!isUpdate || hasOwn('date')) data.date = new Date(payload.date as string)
+  if (!isUpdate || hasOwn('time')) data.time = timeInput || 'TBD'
+  if (!isUpdate || hasOwn('location')) data.location = locationInput || 'TBD'
+  if (!isUpdate || hasOwn('status')) data.status = payload.status as NewEvent['status']
+  if (hasOwn('description')) data.description = descriptionInput || null
+  if (attendeesValue !== undefined) data.attendees = attendeesValue
+  else if (!isUpdate) data.attendees = 0
+  if (chapterIdValue !== undefined) data.chapterId = chapterIdValue
+
+  return { data }
+}
 
 const posterUpload = multer({
   storage: multer.memoryStorage(),
@@ -67,13 +125,12 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const eventData: Record<string, any> = { ...req.body }
-
-    if (eventData.date) {
-      eventData.date = new Date(eventData.date as string)
+    const normalized = normalizeEventPayload(req.body as Record<string, any>)
+    if (normalized.error || !normalized.data) {
+      return res.status(400).json({ success: false, error: normalized.error || 'Invalid event payload' })
     }
 
-    const result = await eventController.create(eventData as NewEvent)
+    const result = await eventController.create(normalized.data as NewEvent)
     res.status(201).json(result)
   } catch (error: any) {
     console.error('[EventRoutes] Error creating event:', error)
@@ -90,13 +147,12 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Event not found' })
     }
 
-    const eventData: Record<string, any> = { ...req.body }
-
-    if (eventData.date) {
-      eventData.date = new Date(eventData.date as string)
+    const normalized = normalizeEventPayload(req.body as Record<string, any>, true)
+    if (normalized.error || !normalized.data) {
+      return res.status(400).json({ success: false, error: normalized.error || 'Invalid event payload' })
     }
 
-    const result = await eventController.update(id, eventData)
+    const result = await eventController.update(id, normalized.data)
     res.json(result)
   } catch (error: any) {
     console.error('[EventRoutes] Error updating event:', error)

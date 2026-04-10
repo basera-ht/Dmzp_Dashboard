@@ -1,6 +1,7 @@
 import { LayoutDashboard, Users, FileText, Settings, User, CalendarDays, LogOut } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { Drawer, DrawerContent } from './ui/drawer';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard',    path: '/'          },
@@ -10,13 +11,18 @@ const navItems = [
   { icon: Settings,        label: 'Settings',     path: '/settings'  },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
+}
+
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { logout, user } = useAuth();
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen">
+    <>
       <div className="p-6 flex flex-col items-center border-b border-gray-50 mb-2">
-        <img src="/logo.png" alt="Logo" className="w-40 h-40 object-contain" />
+        <img src="/logo.png" alt="Logo" className="w-36 h-36 object-contain" />
       </div>
 
       <nav className="flex-1 px-4 space-y-1">
@@ -27,6 +33,7 @@ export function Sidebar() {
               key={item.label}
               to={item.path}
               end={item.path === '/'}
+              onClick={onNavigate}
               className={({ isActive }) =>
                 `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
@@ -52,7 +59,7 @@ export function Sidebar() {
             <p className="text-xs text-gray-500 truncate">{user?.email || 'admin@dmzp.org'}</p>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => logout()}
           className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
         >
@@ -60,6 +67,24 @@ export function Sidebar() {
           <span>Sign Out</span>
         </button>
       </div>
-    </div>
+    </>
+  );
+}
+
+export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps) {
+  return (
+    <>
+      <div className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col h-screen shrink-0">
+        <SidebarContent />
+      </div>
+
+      <Drawer open={mobileOpen} onOpenChange={onMobileOpenChange} direction="left">
+        <DrawerContent className="bg-white p-0">
+          <div className="flex flex-col h-full">
+            <SidebarContent onNavigate={() => onMobileOpenChange(false)} />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    </>
   );
 }

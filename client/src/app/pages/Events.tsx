@@ -87,10 +87,11 @@ function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
   }, [event, isOpen]);
 
   if (!isOpen) return null;
+  const isDateValid = form.date ? !Number.isNaN(new Date(form.date).getTime()) : false;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-lg max-h-[min(92vh,760px)] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center">
@@ -115,7 +116,7 @@ function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
               <input
@@ -158,7 +159,7 @@ function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Expected Attendees</label>
               <input
@@ -194,7 +195,7 @@ function EventModal({ event, isOpen, onClose, onSave, isSaving }: ModalProps) {
           </button>
           <button
             onClick={() => onSave(form)}
-            disabled={isSaving || !form.title || !form.date}
+            disabled={isSaving || !form.title.trim() || !isDateValid}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 text-sm"
           >
             {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : event ? 'Update' : 'Create Event'}
@@ -280,9 +281,14 @@ export function Events() {
   const handleSave = async (data: any) => {
     setIsSaving(true);
     try {
+      const parsedDate = new Date(data.date);
+      if (Number.isNaN(parsedDate.getTime())) {
+        alert('Please enter a valid event date.');
+        return;
+      }
       const payload = {
-        title: data.title,
-        date: new Date(data.date).toISOString(),
+        title: data.title?.trim(),
+        date: parsedDate.toISOString(),
         time: data.time || 'TBD',
         location: data.location || 'TBD',
         attendees: data.attendees || 0,
@@ -304,8 +310,8 @@ export function Events() {
       } else {
         alert((response.error as string) || 'Failed to save event.');
       }
-    } catch {
-      alert('An unexpected error occurred.');
+    } catch (error: any) {
+      alert(error?.message || 'An unexpected error occurred.');
     } finally {
       setIsSaving(false);
     }
@@ -394,7 +400,7 @@ export function Events() {
   });
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <input
         type="file"
         ref={fileInputRef}
@@ -403,7 +409,7 @@ export function Events() {
         className="hidden"
       />
       
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-gray-900 mb-1">Events</h1>
           <p className="text-sm text-gray-600">Manage all DMZP events</p>
@@ -417,7 +423,7 @@ export function Events() {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
         {[
           { label: 'Total Events', value: loading ? '…' : total.toString(), icon: CalendarDays, color: 'teal' },
           { label: 'Upcoming', value: loading ? '…' : upcoming.toString(), icon: Calendar, color: 'blue' },
@@ -432,12 +438,12 @@ export function Events() {
             purple: 'bg-purple-50 text-purple-600',
           };
           return (
-            <div key={card.label} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div key={card.label} className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 min-w-0">
               <div className={`w-11 h-11 rounded-lg ${colorMap[card.color]} flex items-center justify-center mb-4`}>
                 <Icon className="w-5 h-5" />
               </div>
-              <p className="text-2xl font-semibold text-gray-900 mb-1">{card.value}</p>
-              <p className="text-sm text-gray-500">{card.label}</p>
+              <p className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1">{card.value}</p>
+              <p className="text-xs sm:text-sm text-gray-500 leading-tight break-words">{card.label}</p>
             </div>
           );
         })}
