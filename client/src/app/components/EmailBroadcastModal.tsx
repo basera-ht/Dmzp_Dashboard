@@ -77,9 +77,9 @@ export function EmailBroadcastModal({ event, isOpen, onClose }: EmailBroadcastMo
   const fetchMembers = async () => {
     setLoadingMembers(true)
     try {
-      const res = await apiClient.get<{ data: Member[] }>('/events/members/list')
+      const res = await apiClient.get<Member[]>('/events/members/list')
       if (res.success && res.data) {
-        setMembers(res.data)
+        setMembers(res.data as Member[])
       }
     } catch (err) {
       console.error('Failed to fetch members:', err)
@@ -148,12 +148,12 @@ export function EmailBroadcastModal({ event, isOpen, onClose }: EmailBroadcastMo
     setSendingToMembers(true)
     setSendResult(null)
     try {
-      const res = await apiClient.post<{ data: { sent: number; failed: number } }>(
+      const res = await apiClient.post<{ sent: number; failed: number }>(
         `/events/${event.id}/send-to-members`,
         { emails: Array.from(selectedMembers) }
       )
       if (res.success && res.data) {
-        setSendResult(res.data)
+        setSendResult(res.data as { sent: number; failed: number })
         setSelectedMembers(new Set())
       }
     } catch (err) {

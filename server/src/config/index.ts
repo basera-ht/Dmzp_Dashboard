@@ -1,6 +1,12 @@
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-dotenv.config()
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+// Load from the project root .env (works for both monorepo root and server-only runs)
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
+// Fallback: also try server/.env for backwards compatibility
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
