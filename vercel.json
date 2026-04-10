@@ -1,7 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd client && npm run build",
-  "installCommand": "npm install",
+  "installCommand": "echo 'No install needed'",
   "outputDirectory": "client/dist",
   "functions": {
     "api/index.ts": {
