@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router'
 
 const loginSchema = z.object({
   email: z

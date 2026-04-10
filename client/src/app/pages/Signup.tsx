@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router'
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
