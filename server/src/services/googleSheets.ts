@@ -51,7 +51,12 @@ export async function fetchFormData(forceRefresh: boolean = false): Promise<Form
   }
 
   try {
-    const response = await fetch(csvUrl, { cache: 'no-store' })
+    const response = await fetch(csvUrl, { 
+      cache: 'no-store',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to fetch CSV: ${response.status}`)
