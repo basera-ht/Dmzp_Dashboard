@@ -1,6 +1,6 @@
 import { db } from '../database/index.js'
 import { members, hiddenMembers, membershipCardLogs } from '../models/index.js'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import type { ApiResponse } from '../types/index.js'
 import { fetchFormData, getDefaultStats, type FormEntry, type FormStats } from '../services/googleSheets.js'
 
@@ -10,18 +10,32 @@ export const formDataController = {
       const sheetStats = await fetchFormData(refresh)
       const dbMembersRows = await db.select().from(members)
       
-      let hiddenEmails = new Set<string>()
+      let hiddenAtMap = new Map<string, Date>()
       try {
         const hiddens = await db.select().from(hiddenMembers)
-        hiddenEmails = new Set(hiddens.map(h => h.email.toLowerCase()))
+        hiddenAtMap = new Map(hiddens.map(h => [h.email.toLowerCase(), h.createdAt]))
       } catch (err) {
         console.warn('[Dashboard] Hidden members table not yet migrated, skipping filter')
       }
 
       // Filter sheet entries
-      const filteredSheetEntries = sheetStats.allEntries.filter(e => e.email && !hiddenEmails.has(e.email.toLowerCase()))
+      const filteredSheetEntries = sheetStats.allEntries.filter(e => {
+        if (!e.email) return false
+        const hiddenAt = hiddenAtMap.get(e.email.toLowerCase())
+        if (!hiddenAt) return true
+        // If entry is newer than the hide date, show it!
+        return e.submittedAt && e.submittedAt > hiddenAt
+      })
+
       // Filter DB members
-      const filteredDbRows = dbMembersRows.filter(m => m.email && !hiddenEmails.has(m.email.toLowerCase()))
+      const filteredDbRows = dbMembersRows.filter(m => {
+        if (!m.email) return false
+        const hiddenAt = hiddenAtMap.get(m.email.toLowerCase())
+        if (!hiddenAt) return true
+        // Note: DB members (overwrites) are usually created during edits. 
+        // We'll trust the hide logic here, but hideEmail now deletes them anyway.
+        return m.updatedAt > hiddenAt
+      })
 
       const byInstitution: Record<string, number> = {}
       const byCourse: Record<string, number> = {}
@@ -81,7 +95,8 @@ export const formDataController = {
       ])
 
       const sentEmails = new Set(allLogs.map(l => l.email.toLowerCase()))
-      const hiddenEmails = new Set(hiddens.map(h => h.email.toLowerCase()))
+      const hiddenAtMap = new Map(hiddens.map(h => [h.email.toLowerCase(), h.createdAt]))
+      const emailsToUnhide: string[] = []
 
       // Map DB rows to FormEntry format
       const dbEntries: FormEntry[] = dbMembersRows.map(m => ({
@@ -95,7 +110,8 @@ export const formDataController = {
         bloodGroup: m.bloodGroup || '',
         fees: m.fees || 'no',
         source: 'db',
-        cardSent: sentEmails.has(m.email.toLowerCase())
+        cardSent: sentEmails.has(m.email.toLowerCase()),
+        submittedAt: m.updatedAt
       }))
 
       // Merge and filter
@@ -106,7 +122,31 @@ export const formDataController = {
       }))
 
       const allEntries = [...sheetEntries, ...dbEntries]
-        .filter(e => e.email && !hiddenEmails.has(e.email.toLowerCase()))
+        .filter(e => {
+          if (!e.email) return false
+          const email = e.email.toLowerCase()
+          const hiddenAt = hiddenAtMap.get(email)
+          
+          if (!hiddenAt) return true
+          
+          // CRITICAL LOGIC: If form entry is newer than the hide record, SHOW IT
+          if (e.submittedAt && e.submittedAt > hiddenAt) {
+            console.log(`[Dashboard] Detecting new submission for previously hidden email: ${email}. Auto-unhiding.`)
+            emailsToUnhide.push(email)
+            return true
+          }
+          
+          return false
+        })
+
+      // Background cleanup: Remove emails that re-submitted from the hidden list
+      if (emailsToUnhide.length > 0) {
+        // We use Promise.all but don't await so we don't block the API response
+        db.delete(hiddenMembers)
+          .where(inArray(hiddenMembers.email, emailsToUnhide))
+          .execute()
+          .catch(err => console.error('[Dashboard] Failed to auto-unhide members:', err))
+      }
 
       const start = (page - 1) * limit
       const end = start + limit

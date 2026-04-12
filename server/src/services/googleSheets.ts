@@ -15,6 +15,7 @@ export interface FormEntry {
   bloodGroup?: string
   fees?: string
   paymentProofStatus?: PaymentProofStatus
+  submittedAt?: Date
 }
 
 export interface FormStats {
@@ -108,8 +109,37 @@ export function parseCSV(csvText: string): FormEntry[] {
       bloodGroup: bloodCol ? row[bloodCol]?.trim() : '',
       fees,
       ...(paymentProofStatus !== undefined ? { paymentProofStatus } : {}),
+      submittedAt: parseSheetDate(row['Timestamp'] || row['timestamp']),
     }
   })
+}
+
+/**
+ * Parses Google Sheets date format: "DD/MM/YYYY HH:mm:ss"
+ */
+function parseSheetDate(dateStr?: string): Date | undefined {
+  if (!dateStr) return undefined
+  
+  try {
+    // Expected format: "09/04/2026 10:43:15"
+    const [datePart, timePart] = dateStr.trim().split(' ')
+    if (!datePart) return undefined
+
+    const [day, month, year] = datePart.split('/').map(Number)
+    
+    let hours = 0, minutes = 0, seconds = 0
+    if (timePart) {
+      [hours, minutes, seconds] = timePart.split(':').map(Number)
+    }
+
+    // Month is 0-indexed in JS Date
+    const date = new Date(year, month - 1, day, hours || 0, minutes || 0, seconds || 0)
+    
+    return isNaN(date.getTime()) ? undefined : date
+  } catch (err) {
+    console.warn(`[GoogleSheets] Failed to parse date: ${dateStr}`, err)
+    return undefined
+  }
 }
 
 export function calculateStats(entries: FormEntry[]): FormStats {
