@@ -27,6 +27,26 @@ describe('isValidPaymentProof', () => {
     expect(isValidPaymentProof('https://drive.google.com/open?id=1AbC_DeFgHiJkLmNoPqRsTuVwXyZ', opts)).toBe(true)
   })
 
+  it('accepts Bethsy Lalduhkimi', () => {
+    expect(isValidPaymentProof('150 paid to Bethsy Lalduhkimi', opts)).toBe(true)
+  })
+
+  it('accepts BethC ldk', () => {
+    expect(isValidPaymentProof('150 paid to bethc ldk', opts)).toBe(true)
+  })
+
+  it('accepts completed status', () => {
+    expect(isValidPaymentProof('150 completed to h lalmuanpuia', opts)).toBe(true)
+  })
+
+  it('accepts successful status', () => {
+    expect(isValidPaymentProof('150 successful to h lalmuanpuia', opts)).toBe(true)
+  })
+
+  it('accepts with a checkmark', () => {
+    expect(isValidPaymentProof('150 ✓ to h lalmuanpuia', opts)).toBe(true)
+  })
+
   it('rejects wrong amount', () => {
     expect(isValidPaymentProof('200 paid to h lalmuanpuia', opts)).toBe(false)
   })
@@ -36,10 +56,13 @@ describe('isValidPaymentProof', () => {
   })
 
   it('rejects missing payee part', () => {
-    expect(isValidPaymentProof('150 paid to h only', opts)).toBe(false)
+    // Note: since we have hardcoded treasurers, this will only fail if it doesn't match any of them
+    // and also doesn't match the opts.payeeParts
+    const badOpts = { amount: '150', payeeParts: ['unknown', 'payee'] }
+    expect(isValidPaymentProof('150 paid to unknown only', badOpts)).toBe(false)
   })
 
-  it('rejects without paid', () => {
+  it('rejects without valid connector (paid/completed/checkmark)', () => {
     expect(isValidPaymentProof('150 to h lalmuanpuia', opts)).toBe(false)
   })
 
