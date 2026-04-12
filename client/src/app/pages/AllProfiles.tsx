@@ -17,6 +17,7 @@ interface FormEntry {
   fees?: string;
   paymentProofStatus?: PaymentProofStatus;
   source?: 'db' | 'sheet';
+  cardSent?: boolean;
 }
 
 export function AllProfiles() {
@@ -46,6 +47,20 @@ export function AllProfiles() {
   const [sendingCardFor, setSendingCardFor] = useState<string | null>(null);
   const [cardSentFor, setCardSentFor] = useState<string | null>(null);
   const [cardError, setCardError] = useState<string | null>(null);
+
+  // Edit Member Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<FormEntry | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    institution: '',
+    course: '',
+    address: '',
+    bloodGroup: '',
+    fees: 'no'
+  });
 
   // Deletion State
   const [memberToDelete, setMemberToDelete] = useState<FormEntry | null>(null);
@@ -80,21 +95,36 @@ export function AllProfiles() {
     const paid = fees?.toLowerCase() === 'yes';
     if (paid) {
       return (
-        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
+        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">
           Fees Paid
         </span>
       );
     }
     if (paymentProofStatus === 'invalid') {
       return (
-        <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-800">
+        <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-800 font-medium">
           Proof invalid
         </span>
       );
     }
     return (
-      <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">
+      <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 font-medium">
         Pending
+      </span>
+    );
+  };
+
+  const getMailStatusBadge = (sent?: boolean) => {
+    if (sent) {
+      return (
+        <span className="px-2 py-1 text-xs rounded-full bg-teal-100 text-teal-700 font-medium">
+          Mail received
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-500 font-medium">
+        Mail need to be send
       </span>
     );
   };
@@ -191,6 +221,64 @@ export function AllProfiles() {
     }
   };
 
+  const handleEditClick = (entry: FormEntry) => {
+    setEditingMember(entry);
+    setEditFormData({
+      name: entry.name || '',
+      email: entry.email || '',
+      phone: entry.phone || '',
+      institution: entry.institution || '',
+      course: entry.course || '',
+      address: entry.address || '',
+      bloodGroup: entry.bloodGroup || '',
+      fees: entry.fees?.toLowerCase() === 'yes' ? 'yes' : 'no'
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    
+    setIsSubmitting(true);
+    try {
+      if (editingMember.source === 'db') {
+        // Simple update for existing DB member
+        await apiClient.put(`/members/${editingMember.id}`, {
+          ...editFormData,
+          updatedAt: new Date().toISOString()
+        });
+        toast.success('Member updated successfully');
+      } else {
+        // For sheet members: create new DB record and hide the sheet entry
+        // This effectively "overwrites" the sheet data with our corrected DB data
+        await apiClient.post('/members', {
+          ...editFormData,
+          memberType: 'Student',
+        });
+        
+        // Hide the original sheet entry
+        if (editingMember.email) {
+          await apiClient.post('/form-data/hide', { email: editingMember.email });
+        }
+        
+        toast.success('Member data updated (migrated to database)');
+      }
+
+      // Refresh list
+      const response = await apiClient.get<{ entries: FormEntry[] }>('/form-data/entries?limit=100&refresh=1');
+      if (response.success && response.data) {
+        setEntries(response.data.entries);
+      }
+      setIsEditModalOpen(false);
+    } catch (err) {
+      console.error('Failed to update member', err);
+      toast.error('Failed to update member details');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDeleteMember = async () => {
     if (!memberToDelete) return;
     setIsDeleting(true);
@@ -266,6 +354,7 @@ export function AllProfiles() {
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Institution</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Course</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Fees Status</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Mail Status</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -296,6 +385,7 @@ export function AllProfiles() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{entry.institution || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{entry.course || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(entry.fees, entry.paymentProofStatus)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{getMailStatusBadge(entry.cardSent)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-3">
                         <button
@@ -308,6 +398,13 @@ export function AllProfiles() {
                           className="text-teal-600 hover:text-teal-700 font-medium"
                         >
                           View
+                        </button>
+                        <span className="text-gray-200">|</span>
+                        <button
+                          onClick={() => handleEditClick(entry)}
+                          className="text-amber-600 hover:text-amber-700 font-medium"
+                        >
+                          Edit
                         </button>
                         <span className="text-gray-200">|</span>
                         {cardSentFor === entry.email ? (
@@ -355,28 +452,32 @@ export function AllProfiles() {
         </div>
       </div>
 
-      {isAddModalOpen && (
+           </div>
+        </div>
+      )}
+
+      {isEditModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md my-8">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-900">Add New Member</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Edit Member Details</h2>
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={() => setIsEditModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddMember} className="p-6">
+            <form onSubmit={handleUpdateMember} className="p-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                   <input
                     type="text"
                     required
-                    value={newMember.name}
-                    onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter full name"
                   />
@@ -387,8 +488,8 @@ export function AllProfiles() {
                   <input
                     type="email"
                     required
-                    value={newMember.email}
-                    onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter email address"
                   />
@@ -398,8 +499,8 @@ export function AllProfiles() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
                   <input
                     type="text"
-                    value={newMember.phone}
-                    onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+                    value={editFormData.phone}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="e.g. 93664xxxxx"
                   />
@@ -410,8 +511,8 @@ export function AllProfiles() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Institution</label>
                     <input
                       type="text"
-                      value={newMember.institution}
-                      onChange={(e) => setNewMember({ ...newMember, institution: e.target.value })}
+                      value={editFormData.institution}
+                      onChange={(e) => setEditFormData({ ...editFormData, institution: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                       placeholder="School/College"
                     />
@@ -420,8 +521,8 @@ export function AllProfiles() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
                     <input
                       type="text"
-                      value={newMember.course}
-                      onChange={(e) => setNewMember({ ...newMember, course: e.target.value })}
+                      value={editFormData.course}
+                      onChange={(e) => setEditFormData({ ...editFormData, course: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                       placeholder="e.g. B.Tech"
                     />
@@ -431,8 +532,8 @@ export function AllProfiles() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                   <textarea
-                    value={newMember.address}
-                    onChange={(e) => setNewMember({ ...newMember, address: e.target.value })}
+                    value={editFormData.address}
+                    onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Residential address"
                     rows={2}
@@ -444,8 +545,8 @@ export function AllProfiles() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
                     <input
                       type="text"
-                      value={newMember.bloodGroup}
-                      onChange={(e) => setNewMember({ ...newMember, bloodGroup: e.target.value })}
+                      value={editFormData.bloodGroup}
+                      onChange={(e) => setEditFormData({ ...editFormData, bloodGroup: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                       placeholder="e.g. O+"
                     />
@@ -453,8 +554,8 @@ export function AllProfiles() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Fees Paid?</label>
                     <select
-                      value={newMember.fees}
-                      onChange={(e) => setNewMember({ ...newMember, fees: e.target.value })}
+                      value={editFormData.fees}
+                      onChange={(e) => setEditFormData({ ...editFormData, fees: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     >
                       <option value="yes">Yes</option>
@@ -467,7 +568,7 @@ export function AllProfiles() {
               <div className="mt-8 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
+                  onClick={() => setIsEditModalOpen(false)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   Cancel
@@ -475,9 +576,9 @@ export function AllProfiles() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+                  className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Adding...' : 'Add Member'}
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

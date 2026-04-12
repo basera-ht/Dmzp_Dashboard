@@ -75,13 +75,13 @@ export const formDataController = {
       const sheetStats = await fetchFormData(refresh)
       const dbMembersRows = await db.select().from(members)
       
-      let hiddenEmails = new Set<string>()
-      try {
-        const hiddens = await db.select().from(hiddenMembers)
-        hiddenEmails = new Set(hiddens.map(h => h.email.toLowerCase()))
-      } catch (err) {
-        // Fallback for missing table
-      }
+      const [allLogs, hiddens] = await Promise.all([
+        db.select().from(membershipCardLogs),
+        db.select().from(hiddenMembers).catch(() => [])
+      ])
+
+      const sentEmails = new Set(allLogs.map(l => l.email.toLowerCase()))
+      const hiddenEmails = new Set(hiddens.map(h => h.email.toLowerCase()))
 
       // Map DB rows to FormEntry format
       const dbEntries: FormEntry[] = dbMembersRows.map(m => ({
@@ -94,13 +94,15 @@ export const formDataController = {
         address: m.address || '',
         bloodGroup: m.bloodGroup || '',
         fees: m.fees || 'no',
-        source: 'db'
+        source: 'db',
+        cardSent: sentEmails.has(m.email.toLowerCase())
       }))
 
       // Merge and filter
       const sheetEntries = sheetStats.allEntries.map(e => ({
         ...e,
-        source: 'sheet' as const
+        source: 'sheet' as const,
+        cardSent: e.email ? sentEmails.has(e.email.toLowerCase()) : false
       }))
 
       const allEntries = [...sheetEntries, ...dbEntries]

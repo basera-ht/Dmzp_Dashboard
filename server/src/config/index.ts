@@ -43,6 +43,8 @@ export const config = {
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
     from: process.env.SMTP_FROM || 'DMZP <noreply@dmzp.org>',
+    batchSize: parseInt(process.env.EMAIL_BATCH_SIZE || '10', 10),
+    delayMs: parseInt(process.env.EMAIL_DELAY_MS || '1000', 10),
   },
   paymentProof: {
     strict: envBool('PAYMENT_PROOF_STRICT', false),

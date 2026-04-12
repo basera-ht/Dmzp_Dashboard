@@ -3,6 +3,7 @@ import { sendMembershipCard } from './emailService.js'
 import { db } from '../database/index.js'
 import { membershipCardLogs } from '../models/index.js'
 import { eq, inArray } from 'drizzle-orm'
+import { config } from '../config/index.js'
 
 let intervalId: NodeJS.Timeout | null = null
 const POLL_INTERVAL = 1 * 60 * 1000 // 1 minute
@@ -40,9 +41,13 @@ export async function processAutomatedCards() {
       return
     }
 
-    console.log(`[Automation] Found ${newMembers.length} new members. Sending cards...`)
+    // SLICE to batch size to avoid Vercel timeouts
+    const batchSize = config.smtp.batchSize
+    const membersToProcess = newMembers.slice(0, batchSize)
 
-    for (const member of newMembers) {
+    console.log(`[Automation] Found ${newMembers.length} total pending. Processing next batch of ${membersToProcess.length}...`)
+
+    for (const member of membersToProcess) {
       if (!member.email) continue
 
       // Skip members who haven't paid yet — they'll be picked up on the next poll

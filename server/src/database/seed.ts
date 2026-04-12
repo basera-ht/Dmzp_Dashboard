@@ -6,7 +6,7 @@ async function seed() {
   console.log('Seeding database...')
 
   try {
-    const { hash, salt } = hashPassword('Admin@123')
+    const { hash, salt } = hashPassword('Dmzp@2025!')
     const adminPassword = `${hash}:${salt}`
 
     const existingUsers = await db.select().from(users).limit(1)
@@ -16,18 +16,16 @@ async function seed() {
     }
 
     const chapterData = [
-      { name: 'Mumbai Metro', region: 'South Asia', description: 'Mumbai metropolitan region chapter' },
-      { name: 'Delhi Central', region: 'North India', description: 'Delhi NCR region chapter' },
-      { name: 'Bangalore Tech', region: 'South India', description: 'Bangalore technology hub chapter' },
-      { name: 'Chennai Hub', region: 'South India', description: 'Chennai coastal region chapter' },
-      { name: 'Kolkata Guild', region: 'East India', description: 'Kolkata eastern region chapter' },
+      { name: 'DMZP Central', region: 'Delhi', description: 'Central Delhi chapter' },
+      { name: 'North Delhi', region: 'Delhi', description: 'North Delhi students chapter' },
+      { name: 'South Delhi', region: 'Delhi', description: 'South Delhi students chapter' },
     ]
 
     const insertedChapters = await db.insert(chapters).values(chapterData).returning()
     console.log(`Created ${insertedChapters.length} chapters`)
 
     const adminUser = await db.insert(users).values({
-      email: 'admin@impact.org',
+      email: '1959dmzp@gmail.com',
       password: adminPassword,
       name: 'Admin User',
       role: 'Admin',
@@ -50,10 +48,10 @@ async function seed() {
       { name: 'Priya Sharma', email: 'priya.sharma@email.com', chapterId: insertedChapters[0].id, memberType: 'Student' as const, status: 'Active' as const },
       { name: 'Raj Patel', email: 'raj.patel@email.com', chapterId: insertedChapters[1].id, memberType: 'Professional' as const, status: 'Active' as const },
       { name: 'Anita Kumar', email: 'anita.kumar@email.com', chapterId: insertedChapters[2].id, memberType: 'Professional' as const, status: 'Active' as const },
-      { name: 'Vikram Singh', email: 'vikram.singh@email.com', chapterId: insertedChapters[3].id, memberType: 'Student' as const, status: 'Pending' as const },
-      { name: 'Meera Reddy', email: 'meera.reddy@email.com', chapterId: insertedChapters[4].id, memberType: 'Professional' as const, status: 'Active' as const },
+      { name: 'Vikram Singh', email: 'vikram.singh@email.com', chapterId: insertedChapters[0].id, memberType: 'Student' as const, status: 'Pending' as const },
+      { name: 'Meera Reddy', email: 'meera.reddy@email.com', chapterId: insertedChapters[1].id, memberType: 'Professional' as const, status: 'Active' as const },
       { name: 'Arjun Desai', email: 'arjun.desai@email.com', chapterId: insertedChapters[0].id, memberType: 'Student' as const, status: 'Active' as const },
-      { name: 'Kavya Nair', email: 'kavya.nair@email.com', chapterId: insertedChapters[2].id, memberType: 'Professional' as const, status: 'Active' as const },
+      { name: 'Kavya Nair', email: 'kavya.nair@email.com', chapterId: insertedChapters[0].id, memberType: 'Professional' as const, status: 'Active' as const },
       { name: 'Rohit Mehta', email: 'rohit.mehta@email.com', chapterId: insertedChapters[1].id, memberType: 'Organization' as const, status: 'Active' as const },
     ]
 
@@ -64,8 +62,8 @@ async function seed() {
       { title: 'Annual Leadership Summit', description: 'Annual chapter leadership meeting', date: new Date('2026-04-15'), time: '10:00 AM', location: 'Mumbai Convention Center', chapterId: insertedChapters[0].id, attendees: 125, status: 'Upcoming' as const },
       { title: 'Community Outreach Program', description: 'Community service initiative', date: new Date('2026-04-18'), time: '2:00 PM', location: 'Delhi Community Hall', chapterId: insertedChapters[1].id, attendees: 78, status: 'Upcoming' as const },
       { title: 'Tech Workshop: Digital Skills', description: 'Digital literacy workshop', date: new Date('2026-04-22'), time: '9:00 AM', location: 'Bangalore Tech Hub', chapterId: insertedChapters[2].id, attendees: 95, status: 'Upcoming' as const },
-      { title: 'Networking Mixer', description: 'Professional networking event', date: new Date('2026-04-25'), time: '6:00 PM', location: 'Chennai Business Center', chapterId: insertedChapters[3].id, attendees: 62, status: 'Upcoming' as const },
-      { title: 'Youth Mentorship Program', description: 'Mentoring session for students', date: new Date('2026-04-28'), time: '3:00 PM', location: 'Kolkata Youth Center', chapterId: insertedChapters[4].id, attendees: 45, status: 'Upcoming' as const },
+      { title: 'Networking Mixer', description: 'Professional networking event', date: new Date('2026-04-25'), time: '6:00 PM', location: 'Chennai Business Center', chapterId: insertedChapters[2].id, attendees: 62, status: 'Upcoming' as const },
+      { title: 'Youth Mentorship Program', description: 'Mentoring session for students', date: new Date('2026-04-28'), time: '3:00 PM', location: 'Kolkata Youth Center', chapterId: insertedChapters[1].id, attendees: 45, status: 'Upcoming' as const },
     ]
 
     const insertedEvents = await db.insert(events).values(eventData).returning()
@@ -85,8 +83,8 @@ async function seed() {
 
     console.log('Database seeded successfully!')
     console.log('\n--- Login Credentials ---')
-    console.log('Email: admin@impact.org')
-    console.log('Password: Admin@123')
+    console.log('Email: 1959dmzp@gmail.com')
+    console.log('Password: Dmzp@2025!')
     console.log('-------------------------')
 
   } catch (error) {
