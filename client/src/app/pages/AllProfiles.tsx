@@ -309,7 +309,7 @@ export function AllProfiles() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-gray-900 mb-1">All Member Profiles</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">All Member Profiles <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full ml-2">v2.0</span></h1>
           <p className="text-sm text-gray-600">Browse and manage all registered members</p>
         </div>
         <button
