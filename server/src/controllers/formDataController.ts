@@ -128,14 +128,20 @@ export const formDataController = {
   async hideEmail(email: string): Promise<ApiResponse<{ email: string }>> {
     console.log(`[HideMember] Starting hide for: ${email}`)
     try {
-      console.log(`[HideMember] Inserting into hidden_members...`)
-      const result = await db
-        .insert(hiddenMembers)
-        .values({ email: email.toLowerCase() })
-        .onConflictDoNothing({ target: hiddenMembers.email })
-        .returning()
+      console.log(`[HideMember] Inserting into hidden_members and removing from members table...`)
+      const [result] = await Promise.all([
+        db
+          .insert(hiddenMembers)
+          .values({ email: email.toLowerCase() })
+          .onConflictDoNothing({ target: hiddenMembers.email })
+          .returning(),
+        db
+          .delete(members)
+          .where(eq(members.email, email.toLowerCase()))
+          .execute()
+      ])
       
-      console.log(`[HideMember] Insert complete. Result:`, JSON.stringify(result))
+      console.log(`[HideMember] Hide and Delete complete.`)
       return { success: true, data: { email } }
     } catch (error: any) {
       console.error(`[HideMember] Error during hide operation:`, error.message)
