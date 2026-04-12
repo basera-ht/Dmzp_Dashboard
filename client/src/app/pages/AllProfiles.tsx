@@ -585,7 +585,7 @@ export function AllProfiles() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md my-8">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-900">Edit Member Details</h2>
+              <h1 className="text-2xl font-bold text-gray-900">All Member Profiles <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full ml-2">v2.0</span></h1>
               <button
                 onClick={() => setIsEditModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
