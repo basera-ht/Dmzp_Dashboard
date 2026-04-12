@@ -1,5 +1,5 @@
 import { db } from '../database/index.js'
-import { members, hiddenMembers } from '../models/index.js'
+import { members, hiddenMembers, membershipCardLogs } from '../models/index.js'
 import { eq } from 'drizzle-orm'
 import type { ApiResponse } from '../types/index.js'
 import { fetchFormData, getDefaultStats, type FormEntry, type FormStats } from '../services/googleSheets.js'
