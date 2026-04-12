@@ -8,6 +8,12 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 // Fallback: also try server/.env for backwards compatibility
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
+function envBool(name: string, defaultValue: boolean): boolean {
+  const v = process.env[name]
+  if (v === undefined || v === '') return defaultValue
+  return ['1', 'true', 'yes', 'on'].includes(v.toLowerCase())
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -37,5 +43,13 @@ export const config = {
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
     from: process.env.SMTP_FROM || 'DMZP <noreply@dmzp.org>',
+  },
+  paymentProof: {
+    strict: envBool('PAYMENT_PROOF_STRICT', false),
+    amount: process.env.PAYMENT_PROOF_AMOUNT || '150',
+    payeeParts: (process.env.PAYMENT_PROOF_PAYEE_PARTS || 'bethsy,lalduhkimi')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
   },
 }

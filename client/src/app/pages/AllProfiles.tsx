@@ -3,6 +3,8 @@ import { Search, Download, UserPlus, X, Mail, RefreshCw, CheckCircle2, Trash2, L
 import { apiClient, API_BASE_URL } from '../../lib/api';
 import { toast } from 'sonner';
 
+type PaymentProofStatus = 'valid' | 'empty' | 'invalid';
+
 interface FormEntry {
   id?: string;
   name?: string;
@@ -13,6 +15,7 @@ interface FormEntry {
   address?: string;
   bloodGroup?: string;
   fees?: string;
+  paymentProofStatus?: PaymentProofStatus;
   source?: 'db' | 'sheet';
 }
 
@@ -73,13 +76,33 @@ export function AllProfiles() {
     return matchesSearch;
   });
 
-  const getStatusBadge = (fees?: string) => {
+  const getStatusBadge = (fees?: string, paymentProofStatus?: PaymentProofStatus) => {
     const paid = fees?.toLowerCase() === 'yes';
+    if (paid) {
+      return (
+        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
+          Fees Paid
+        </span>
+      );
+    }
+    if (paymentProofStatus === 'invalid') {
+      return (
+        <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-800">
+          Proof invalid
+        </span>
+      );
+    }
     return (
-      <span className={`px-2 py-1 text-xs rounded-full ${paid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-        {paid ? 'Fees Paid' : 'Pending'}
+      <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">
+        Pending
       </span>
     );
+  };
+
+  const feesStatusLabel = (entry: FormEntry) => {
+    if (entry.fees === 'yes') return 'Fees Paid';
+    if (entry.paymentProofStatus === 'invalid') return 'Proof invalid';
+    return 'Pending';
   };
 
   const handleExport = () => {
@@ -90,7 +113,7 @@ export function AllProfiles() {
       `"${entry.phone || 'N/A'}"`,
       `"${entry.institution || 'N/A'}"`,
       `"${entry.course || 'N/A'}"`,
-      `"${entry.fees === 'yes' ? 'Fees Paid' : 'Pending'}"`
+      `"${feesStatusLabel(entry)}"`
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -120,8 +143,8 @@ export function AllProfiles() {
         memberType: 'Student',
       });
 
-      // Auto-send membership card
-      if (newMember.email) {
+      // Auto-send membership card only if fees are confirmed paid
+      if (newMember.email && newMember.fees === 'yes') {
         await apiClient.post('/member-card/send', {
           name: newMember.name,
           email: newMember.email,
@@ -237,6 +260,7 @@ export function AllProfiles() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-4 py-3 text-left text-xs text-gray-600 uppercase tracking-wider w-10">#</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Name</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">WhatsApp</th>
                 <th className="px-6 py-3 text-left text-xs text-gray-600 uppercase tracking-wider">Institution</th>
@@ -248,15 +272,18 @@ export function AllProfiles() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Loading...</td>
                 </tr>
               ) : filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">No members found</td>
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">No members found</td>
                 </tr>
               ) : (
                 filteredEntries.map((entry, index) => (
                   <tr key={index} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
+                      {index + 1}.
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center mr-3">
@@ -268,7 +295,7 @@ export function AllProfiles() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">{entry.phone || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{entry.institution || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{entry.course || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(entry.fees)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(entry.fees, entry.paymentProofStatus)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-3">
                         <button
@@ -286,6 +313,14 @@ export function AllProfiles() {
                         {cardSentFor === entry.email ? (
                           <span className="flex items-center gap-1 text-green-600 text-xs font-medium">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Sent!
+                          </span>
+                        ) : entry.fees?.toLowerCase() !== 'yes' ? (
+                          <span
+                            className="flex items-center gap-1 text-xs text-gray-300 cursor-not-allowed"
+                            title="Cannot send — payment is pending"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            Resend Card
                           </span>
                         ) : (
                           <button
@@ -475,7 +510,7 @@ export function AllProfiles() {
                   <h2 className="text-2xl font-bold text-gray-900">{selectedMember.name || 'Unknown Member'}</h2>
                   <p className="text-gray-500">{selectedMember.email || 'No email provided'}</p>
                 </div>
-                {getStatusBadge(selectedMember.fees)}
+                {getStatusBadge(selectedMember.fees, selectedMember.paymentProofStatus)}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">

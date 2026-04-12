@@ -9,6 +9,7 @@ import { RefreshCw } from 'lucide-react';
 interface FormStats {
   totalMembers: number;
   totalFees: number;
+  mostPopularCourse?: string;
   byInstitution: Record<string, number>;
   byBloodGroup: Record<string, number>;
   byCourse: Record<string, number>;
@@ -59,9 +60,13 @@ export function Dashboard() {
   const totalMembers = stats?.totalMembers ?? 0;
   const totalFees = stats?.totalFees ?? 0;
 
-  const topCourse = stats?.byCourse 
-    ? Object.entries(stats.byCourse).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'
-    : 'N/A';
+  // Use server-computed value if available, otherwise fall back to client-side sort
+  const topCourse = stats?.mostPopularCourse ??
+    (stats?.byCourse
+      ? Object.entries(stats.byCourse)
+          .filter(([name]) => name && name.trim() !== '')
+          .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'N/A'
+      : 'N/A');
 
 
   return (

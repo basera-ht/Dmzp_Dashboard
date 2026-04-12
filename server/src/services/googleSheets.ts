@@ -1,5 +1,8 @@
 import Papa from 'papaparse'
 import { config } from '../config/index.js'
+import { resolvePaymentProof, type PaymentProofStatus } from './paymentProofValidation.js'
+
+export type { PaymentProofStatus }
 
 export interface FormEntry {
   id?: number | string
@@ -11,6 +14,7 @@ export interface FormEntry {
   address?: string
   bloodGroup?: string
   fees?: string
+  paymentProofStatus?: PaymentProofStatus
 }
 
 export interface FormStats {
@@ -19,6 +23,7 @@ export interface FormStats {
   byInstitution: Record<string, number>
   byBloodGroup: Record<string, number>
   byCourse: Record<string, number>
+  mostPopularCourse?: string
   recentEntries: FormEntry[]
   allEntries: FormEntry[]
 }
@@ -85,18 +90,26 @@ export function parseCSV(csvText: string): FormEntry[] {
   const addressCol = headers.find(h => h.toLowerCase().includes('address'))
   const bloodCol = headers.find(h => h.toLowerCase().includes('blood'))
   const proofCol = headers.find(h => h.toLowerCase().includes('proof') || h.toLowerCase().includes('payment'))
+  const pp = config.paymentProof
+  const proofOpts = { amount: pp.amount, payeeParts: pp.payeeParts }
 
-  return result.data.map((row, index) => ({
-    id: String(index + 1).padStart(3, '0'), // Row index as Serial ID
-    name: nameCol ? row[nameCol]?.trim() : '',
-    email: emailCol ? row[emailCol]?.trim() : '',
-    phone: phoneCol ? row[phoneCol]?.trim() : '',
-    institution: instCol ? row[instCol]?.trim() : '',
-    course: courseCol ? row[courseCol]?.trim() : '',
-    address: addressCol ? row[addressCol]?.trim() : '',
-    bloodGroup: bloodCol ? row[bloodCol]?.trim() : '',
-    fees: proofCol && row[proofCol]?.trim() ? 'yes' : 'no',
-  }))
+  return result.data.map((row, index) => {
+    const rawProof = proofCol ? row[proofCol]?.trim() ?? '' : ''
+    const { fees, paymentProofStatus } = resolvePaymentProof(rawProof, pp.strict, proofOpts)
+
+    return {
+      id: String(index + 1).padStart(3, '0'), // Row index as Serial ID
+      name: nameCol ? row[nameCol]?.trim() : '',
+      email: emailCol ? row[emailCol]?.trim() : '',
+      phone: phoneCol ? row[phoneCol]?.trim() : '',
+      institution: instCol ? row[instCol]?.trim() : '',
+      course: courseCol ? row[courseCol]?.trim() : '',
+      address: addressCol ? row[addressCol]?.trim() : '',
+      bloodGroup: bloodCol ? row[bloodCol]?.trim() : '',
+      fees,
+      ...(paymentProofStatus !== undefined ? { paymentProofStatus } : {}),
+    }
+  })
 }
 
 export function calculateStats(entries: FormEntry[]): FormStats {
@@ -124,12 +137,18 @@ export function calculateStats(entries: FormEntry[]): FormStats {
 
   const sortedEntries = [...entries].reverse().slice(0, 10)
 
+  const mostPopularCourse =
+    Object.entries(byCourse)
+      .filter(([name]) => name && name.trim() !== '')
+      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'N/A'
+
   return {
     totalMembers: entries.length,
     totalFees: paidCount,
     byInstitution,
     byBloodGroup,
     byCourse,
+    mostPopularCourse,
     recentEntries: sortedEntries,
     allEntries: entries,
   }
@@ -142,6 +161,7 @@ export function getDefaultStats(): FormStats {
     byInstitution: {},
     byBloodGroup: {},
     byCourse: {},
+    mostPopularCourse: 'N/A',
     recentEntries: [],
     allEntries: [],
   }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../lib/api';
 
+type PaymentProofStatus = 'valid' | 'empty' | 'invalid';
+
 interface FormEntry {
   name?: string;
   email?: string;
@@ -8,6 +10,7 @@ interface FormEntry {
   institution?: string;
   course?: string;
   fees?: string;
+  paymentProofStatus?: PaymentProofStatus;
 }
 
 export function MemberActivityTable() {
@@ -31,11 +34,25 @@ export function MemberActivityTable() {
     fetchEntries();
   }, []);
 
-  const getStatusBadge = (fees?: string) => {
+  const getStatusBadge = (fees?: string, paymentProofStatus?: PaymentProofStatus) => {
     const paid = fees?.toLowerCase() === 'yes';
+    if (paid) {
+      return (
+        <span className="inline-flex px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+          Fees Paid
+        </span>
+      );
+    }
+    if (paymentProofStatus === 'invalid') {
+      return (
+        <span className="inline-flex px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
+          Proof invalid
+        </span>
+      );
+    }
     return (
-      <span className={`inline-flex px-2 py-1 rounded-full text-xs ${paid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-        {paid ? 'Fees Paid' : 'Pending'}
+      <span className="inline-flex px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+        Pending
       </span>
     );
   };
@@ -69,11 +86,11 @@ export function MemberActivityTable() {
           <tbody className="divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading...</td>
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Loading...</td>
               </tr>
             ) : entries.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No recent activity</td>
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No recent activity</td>
               </tr>
             ) : (
               entries.map((entry, index) => (
@@ -91,7 +108,7 @@ export function MemberActivityTable() {
                     {entry.course || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(entry.fees)}
+                    {getStatusBadge(entry.fees, entry.paymentProofStatus)}
                   </td>
                 </tr>
               ))

@@ -5,20 +5,22 @@ import { clearCache } from '../services/googleSheets.js'
 const router = Router()
 
 router.get('/stats', async (req, res) => {
-  if (req.query.refresh) {
+  const refresh = !!req.query.refresh
+  if (refresh) {
     clearCache()
   }
-  const result = await formDataController.getStats()
+  const result = await formDataController.getStats(refresh)
   res.status(result.success ? 200 : 500).json(result)
 })
 
 router.get('/entries', async (req, res) => {
-  if (req.query.refresh) {
+  const refresh = !!req.query.refresh
+  if (refresh) {
     clearCache()
   }
   const page = parseInt(req.query.page as string) || 1
   const limit = parseInt(req.query.limit as string) || 50
-  const result = await formDataController.getEntries(page, limit)
+  const result = await formDataController.getEntries(page, limit, refresh)
   res.status(result.success ? 200 : 500).json(result)
 })
 

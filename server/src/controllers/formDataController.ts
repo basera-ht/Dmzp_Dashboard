@@ -5,9 +5,9 @@ import type { ApiResponse } from '../types/index.js'
 import { fetchFormData, getDefaultStats, type FormEntry, type FormStats } from '../services/googleSheets.js'
 
 export const formDataController = {
-  async getStats(): Promise<ApiResponse<FormStats>> {
+  async getStats(refresh?: boolean): Promise<ApiResponse<FormStats>> {
     try {
-      const sheetStats = await fetchFormData()
+      const sheetStats = await fetchFormData(refresh)
       const dbMembersRows = await db.select().from(members)
       
       let hiddenEmails = new Set<string>()
@@ -46,6 +46,11 @@ export const formDataController = {
 
       const totalMembers = filteredSheetEntries.length + filteredDbRows.length
 
+      // Compute the most popular course by count
+      const mostPopularCourse = Object.entries(byCourse)
+        .filter(([name]) => name && name.trim() !== '')
+        .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'N/A'
+
       return {
         success: true,
         data: {
@@ -55,6 +60,7 @@ export const formDataController = {
           byInstitution,
           byCourse,
           byBloodGroup,
+          mostPopularCourse,
           allEntries: filteredSheetEntries, // Keep allEntries updated in stats too
         },
       }
@@ -64,9 +70,9 @@ export const formDataController = {
     }
   },
 
-  async getEntries(page = 1, limit = 50): Promise<ApiResponse<{ entries: FormEntry[]; total: number }>> {
+  async getEntries(page = 1, limit = 50, refresh?: boolean): Promise<ApiResponse<{ entries: FormEntry[]; total: number }>> {
     try {
-      const sheetStats = await fetchFormData()
+      const sheetStats = await fetchFormData(refresh)
       const dbMembersRows = await db.select().from(members)
       
       let hiddenEmails = new Set<string>()

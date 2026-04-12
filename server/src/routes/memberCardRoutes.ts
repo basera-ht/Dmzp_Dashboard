@@ -55,6 +55,15 @@ router.post('/send', async (req, res) => {
     return
   }
 
+  // Block sending if payment is pending
+  if (!fees || fees.toLowerCase() !== 'yes') {
+    res.status(403).json({
+      success: false,
+      error: 'Membership card cannot be sent — payment is still pending.',
+    } as ApiResponse<null>)
+    return
+  }
+
   const result = await sendMembershipCard({ name, email, fees, id, bloodGroup, address })
 
   if (result.success) {
