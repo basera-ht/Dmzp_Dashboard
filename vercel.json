@@ -22,11 +22,5 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/automation/cron-run",
-      "schedule": "* * * * *"
-    }
   ]
 }
