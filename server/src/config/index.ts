@@ -47,7 +47,7 @@ export const config = {
   paymentProof: {
     strict: envBool('PAYMENT_PROOF_STRICT', false),
     amount: process.env.PAYMENT_PROOF_AMOUNT || '150',
-    payeeParts: (process.env.PAYMENT_PROOF_PAYEE_PARTS || 'bethsy,lalduhkimi')
+    payeeParts: (process.env.PAYMENT_PROOF_PAYEE_PARTS || 'h,lalmuanpuia')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
