@@ -1,9 +1,8 @@
-import { fetchFormData } from './googleSheets.js'
 import { sendMembershipCard } from './emailService.js'
 import { db } from '../database/index.js'
 import { membershipCardLogs } from '../models/index.js'
-import { eq, inArray } from 'drizzle-orm'
 import { config } from '../config/index.js'
+import { getUnifiedEntries } from './memberDataService.js'
 
 let intervalId: NodeJS.Timeout | null = null
 const POLL_INTERVAL = 1 * 60 * 1000 // 1 minute
@@ -19,7 +18,7 @@ export interface AutomationResult {
 }
 
 export async function processAutomatedCards(): Promise<AutomationResult> {
-  console.log('[Automation] Checking for new members in Google Sheets...')
+  console.log('[Automation] Checking for new members (Unified Data)...')
   
   const result: AutomationResult = {
     totalInSheet: 0,
@@ -32,44 +31,32 @@ export async function processAutomatedCards(): Promise<AutomationResult> {
   }
 
   try {
-    const data = await fetchFormData(true) // Force fresh data from Google Sheets
-    const entries = data.allEntries // Scan ALL entries in the sheet, not just the top 10
-
+    // Get unified entries (Sheets + DB Overrides - Hidden)
+    const entries = await getUnifiedEntries(true)
     result.totalInSheet = entries.length
 
     if (!entries.length) {
-      console.log('[Automation] No entries found in Google Sheet.')
+      console.log('[Automation] No entries found.')
       return result
     }
 
-    // Get all emails from the current batch
-    const emails = entries.map(e => e.email).filter((e): e is string => !!e)
-    result.totalWithEmail = emails.length
+    const withEmail = entries.filter(e => e.email)
+    result.totalWithEmail = withEmail.length
     
-    if (!emails.length) {
-      console.log('[Automation] No entries with valid email addresses found.')
-      return result
-    }
-
-    // Find which ones have already received a card
-    const sentLogs = await db
-      .select({ email: membershipCardLogs.email })
-      .from(membershipCardLogs)
-      .where(inArray(membershipCardLogs.email, emails))
-
-    const sentEmails = new Set(sentLogs.map(l => l.email))
-    result.alreadySent = sentEmails.size
+    const alreadySent = entries.filter(e => e.cardSent)
+    result.alreadySent = alreadySent.length
 
     // Filter for new members who haven't received a card AND have paid their fees
+    // This now uses the unified 'cardSent' status and 'fees' which prioritize DB edits
     const newMembers = entries.filter(e => 
       e.email && 
-      !sentEmails.has(e.email) && 
+      !e.cardSent && 
       e.fees?.toLowerCase() === 'yes'
     )
     result.newMembers = newMembers.length
 
     if (newMembers.length === 0) {
-      console.log('[Automation] No new members to process — all have already been sent cards.')
+      console.log('[Automation] No new members to process.')
       return result
     }
 
@@ -96,7 +83,7 @@ export async function processAutomatedCards(): Promise<AutomationResult> {
           email: member.email,
           sentAt: new Date()
         })
-        console.log(`[Automation] ✅ Successfully sent card to ${member.email}`)
+        console.log(`[Automation] ✅ Successfully sent card to ${member.email} (${member.source === 'db' ? 'Edited' : 'Sheet'})`)
         result.emailsSent++
       } else {
         console.error(`[Automation] ❌ Failed to send card to ${member.email}:`, sendResult.error)
@@ -104,7 +91,7 @@ export async function processAutomatedCards(): Promise<AutomationResult> {
       }
     }
 
-    console.log(`[Automation] Done. Sent: ${result.emailsSent}, Failed: ${result.emailsFailed}, Payment Pending: ${result.paymentPending}`)
+    console.log(`[Automation] Done. Sent: ${result.emailsSent}, Failed: ${result.emailsFailed}`)
   } catch (err) {
     console.error('[Automation] Error in automated card processing:', err)
   }
@@ -114,13 +101,8 @@ export async function processAutomatedCards(): Promise<AutomationResult> {
 
 export function startAutomationWorker() {
   if (intervalId) return
-
   console.log('[Automation] Starting automation worker...')
-  
-  // Initial run
   processAutomatedCards()
-
-  // Set up recurring interval
   intervalId = setInterval(processAutomatedCards, POLL_INTERVAL)
 }
 
