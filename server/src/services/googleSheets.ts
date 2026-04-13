@@ -51,12 +51,22 @@ export async function fetchFormData(forceRefresh: boolean = false): Promise<Form
   }
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000) // 20s timeout
+
+    console.log(`[GoogleSheets] Fetching CSV from: ${csvUrl.substring(0, 50)}...`)
+    const startTime = Date.now()
+
     const response = await fetch(csvUrl, { 
       cache: 'no-store',
+      signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       }
     })
+
+    clearTimeout(timeoutId)
+    console.log(`[GoogleSheets] Fetch completed in ${Date.now() - startTime}ms`)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch CSV: ${response.status}`)
@@ -111,17 +121,22 @@ export function parseCSV(csvText: string): FormEntry[] {
   let proofCol = headers.find(h => PROOF_KEYWORDS.some(kw => h.toLowerCase().includes(kw)))
 
   // Fallback: scan all unrecognised columns for a row that contains a Google Drive URL
-  // This catches any file-upload column regardless of its heading
+  // We limit this to the first 20 rows to keep it very fast even on huge sheets.
   if (!proofCol) {
     const unknownCols = headers.filter(h => !knownCols.has(h))
-    proofCol = unknownCols.find(col =>
-      result.data.some(row => {
-        const v = row[col]?.trim() ?? ''
-        return /https?:\/\/drive\.google\.com/i.test(v) ||
-               /https?:\/\/[^\s]+/.test(v) ||
-               /\.(jpe?g|png|pdf|heic)$/i.test(v)
-      })
-    )
+    const sampleSize = Math.min(result.data.length, 20)
+    
+    proofCol = unknownCols.find(col => {
+      for (let i = 0; i < sampleSize; i++) {
+        const v = result.data[i]?.[col]?.trim() ?? ''
+        if (/https?:\/\/drive\.google\.com/i.test(v) ||
+            /https?:\/\/[^\s]+/.test(v) ||
+            /\.(jpe?g|png|pdf|heic)$/i.test(v)) {
+          return true
+        }
+      }
+      return false
+    })
   }
 
   if (!proofCol) {

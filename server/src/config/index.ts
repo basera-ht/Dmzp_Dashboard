@@ -55,3 +55,15 @@ export const config = {
       .filter(Boolean),
   },
 }
+// Diagnostic startup logs for Vercel troubleshooting
+if (config.nodeEnv !== 'test') {
+  console.log('[Config] 🛠️  Environment Check:', {
+    HAS_DATABASE_URL: !!process.env.DATABASE_URL,
+    HAS_SMTP_USER: !!process.env.SMTP_USER,
+    HAS_SMTP_PASS: !!process.env.SMTP_PASS,
+    HAS_CRON_SECRET: !!process.env.CRON_SECRET,
+    HAS_JWT_SECRET: !!process.env.JWT_SECRET,
+    GOOGLE_SHEETS_URL_SET: !!process.env.GOOGLE_SHEETS_URL,
+    NODE_ENV: config.nodeEnv,
+  })
+}
