@@ -12,7 +12,11 @@ export interface UnifiedEntry extends FormEntry {
  * Fetches data from Google Sheets and the local Database, then merges them.
  * Local DB entries (edits) always take priority over Sheet entries with the same email.
  */
-export async function getUnifiedEntries(refresh: boolean = false): Promise<UnifiedEntry[]> {
+export async function getUnifiedEntries(
+  refresh: boolean = false, 
+  sortBy: 'newest' | 'oldest' = 'newest'
+): Promise<UnifiedEntry[]> {
+
   // 1. Fetch Google Sheet data and DB overrides in parallel
   const [sheetData, dbMembersRows, allLogs, hiddens] = await Promise.all([
     fetchFormData(refresh),
@@ -83,10 +87,10 @@ export async function getUnifiedEntries(refresh: boolean = false): Promise<Unifi
     return e.submittedAt && e.submittedAt > hiddenAt
   })
 
-  // Sort by submittedAt desc
+  // Sort based on parameter
   return filteredEntries.sort((a, b) => {
     const dateA = a.submittedAt?.getTime() || 0
     const dateB = b.submittedAt?.getTime() || 0
-    return dateB - dateA
+    return sortBy === 'newest' ? dateB - dateA : dateA - dateB
   })
 }

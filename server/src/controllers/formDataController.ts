@@ -7,7 +7,7 @@ import { getUnifiedEntries, type UnifiedEntry } from '../services/memberDataServ
 export const formDataController = {
   async getStats(refresh?: boolean): Promise<ApiResponse<any>> {
     try {
-      const allEntries = await getUnifiedEntries(refresh)
+      const allEntries = await getUnifiedEntries(refresh, 'newest')
       
       const byInstitution: Record<string, number> = {}
       const byCourse: Record<string, number> = {}
@@ -46,7 +46,7 @@ export const formDataController = {
 
   async getEntries(page = 1, limit = 50, refresh?: boolean): Promise<ApiResponse<{ entries: UnifiedEntry[]; total: number }>> {
     try {
-      const allEntries = await getUnifiedEntries(refresh)
+      const allEntries = await getUnifiedEntries(refresh, 'oldest')
       
       const start = (page - 1) * limit
       const end = start + limit
