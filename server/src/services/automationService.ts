@@ -78,14 +78,6 @@ export async function processAutomatedCards(): Promise<AutomationResult> {
     for (const member of membersToProcess) {
       if (!member.email) continue
 
-      // Skip members who haven't paid yet — they'll be picked up on the next poll
-      // once their payment is confirmed in the sheet
-      if (!member.fees || member.fees.toLowerCase() !== 'yes') {
-        console.log(`[Automation] Skipping ${member.email} — payment not yet validated (fees="${member.fees}", proofStatus="${member.paymentProofStatus}").`)
-        result.paymentPending++
-        continue
-      }
-
       const sendResult = await sendMembershipCard({
         name: member.name || 'Member',
         email: member.email,
