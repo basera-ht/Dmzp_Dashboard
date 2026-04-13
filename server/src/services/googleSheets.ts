@@ -87,15 +87,49 @@ export function parseCSV(csvText: string): FormEntry[] {
   })
 
   const headers = result.meta.fields || []
+
+  // Log headers once to aid debugging
+  console.log('[GoogleSheets] CSV headers detected:', headers)
   
-  const nameCol = headers.find(h => h.toLowerCase().includes('hming') || h.toLowerCase().includes('name'))
-  const emailCol = headers.find(h => h.toLowerCase().includes('email'))
-  const phoneCol = headers.find(h => h.toLowerCase().includes('phone') || h.toLowerCase().includes('whatsapp'))
-  const instCol = headers.find(h => h.toLowerCase().includes('institution') || h.toLowerCase().includes('zirna in'))
-  const courseCol = headers.find(h => h.toLowerCase().includes('course') || h.toLowerCase().includes('subject'))
+  const nameCol    = headers.find(h => h.toLowerCase().includes('hming') || h.toLowerCase().includes('name'))
+  const emailCol   = headers.find(h => h.toLowerCase().includes('email'))
+  const phoneCol   = headers.find(h => h.toLowerCase().includes('phone') || h.toLowerCase().includes('whatsapp'))
+  const instCol    = headers.find(h => h.toLowerCase().includes('institution') || h.toLowerCase().includes('zirna in'))
+  const courseCol  = headers.find(h => h.toLowerCase().includes('course') || h.toLowerCase().includes('subject'))
   const addressCol = headers.find(h => h.toLowerCase().includes('address'))
-  const bloodCol = headers.find(h => h.toLowerCase().includes('blood'))
-  const proofCol = headers.find(h => h.toLowerCase().includes('proof') || h.toLowerCase().includes('payment'))
+  const bloodCol   = headers.find(h => h.toLowerCase().includes('blood'))
+
+  // Payment proof column — covers all realistic Google Form question names:
+  // English: proof, payment, receipt, upload, screenshot, transaction, upi, transfer
+  // Mizo:    man (payment), thlirna (receipt/proof)
+  const PROOF_KEYWORDS = [
+    'proof', 'payment', 'receipt', 'upload', 'screenshot',
+    'transaction', 'upi', 'transfer', 'thlirna', 'man'
+  ]
+  const knownCols = new Set([nameCol, emailCol, phoneCol, instCol, courseCol, addressCol, bloodCol, 'Timestamp', 'timestamp'].filter(Boolean))
+
+  let proofCol = headers.find(h => PROOF_KEYWORDS.some(kw => h.toLowerCase().includes(kw)))
+
+  // Fallback: scan all unrecognised columns for a row that contains a Google Drive URL
+  // This catches any file-upload column regardless of its heading
+  if (!proofCol) {
+    const unknownCols = headers.filter(h => !knownCols.has(h))
+    proofCol = unknownCols.find(col =>
+      result.data.some(row => {
+        const v = row[col]?.trim() ?? ''
+        return /https?:\/\/drive\.google\.com/i.test(v) ||
+               /https?:\/\/[^\s]+/.test(v) ||
+               /\.(jpe?g|png|pdf|heic)$/i.test(v)
+      })
+    )
+  }
+
+  if (!proofCol) {
+    console.warn('[GoogleSheets] ⚠️  Could not detect a payment proof column. Members may be marked as unpaid. Headers:', headers)
+  } else {
+    console.log('[GoogleSheets] Payment proof column detected:', proofCol)
+  }
+
   const pp = config.paymentProof
   const proofOpts = { amount: pp.amount, payeeParts: pp.payeeParts }
 
