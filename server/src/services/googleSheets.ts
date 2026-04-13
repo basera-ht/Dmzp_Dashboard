@@ -109,14 +109,18 @@ export function parseCSV(csvText: string): FormEntry[] {
   const addressCol = headers.find(h => h.toLowerCase().includes('address'))
   const bloodCol   = headers.find(h => h.toLowerCase().includes('blood'))
 
+  const timestampCol = headers.find(h => 
+    h.toLowerCase() === 'timestamp' || 
+    h.toLowerCase().includes('date') || 
+    h.toLowerCase().includes('a hun')
+  )
+
   // Payment proof column — covers all realistic Google Form question names:
-  // English: proof, payment, receipt, upload, screenshot, transaction, upi, transfer
-  // Mizo:    man (payment), thlirna (receipt/proof)
   const PROOF_KEYWORDS = [
     'proof', 'payment', 'receipt', 'upload', 'screenshot',
     'transaction', 'upi', 'transfer', 'thlirna', 'man'
   ]
-  const knownCols = new Set([nameCol, emailCol, phoneCol, instCol, courseCol, addressCol, bloodCol, 'Timestamp', 'timestamp'].filter(Boolean))
+  const knownCols = new Set([nameCol, emailCol, phoneCol, instCol, courseCol, addressCol, bloodCol, timestampCol].filter(Boolean))
 
   let proofCol = headers.find(h => PROOF_KEYWORDS.some(kw => h.toLowerCase().includes(kw)))
 
@@ -163,7 +167,7 @@ export function parseCSV(csvText: string): FormEntry[] {
       bloodGroup: bloodCol ? row[bloodCol]?.trim() : '',
       fees,
       ...(paymentProofStatus !== undefined ? { paymentProofStatus } : {}),
-      submittedAt: parseSheetDate(row['Timestamp'] || row['timestamp']),
+      submittedAt: parseSheetDate(timestampCol ? row[timestampCol] : undefined),
     }
   })
 }

@@ -91,6 +91,14 @@ export async function getUnifiedEntries(
   return filteredEntries.sort((a, b) => {
     const dateA = a.submittedAt?.getTime() || 0
     const dateB = b.submittedAt?.getTime() || 0
-    return sortBy === 'newest' ? dateB - dateA : dateA - dateB
+    
+    if (dateA !== dateB) {
+      return sortBy === 'newest' ? dateB - dateA : dateA - dateB
+    }
+    
+    // Fallback to ID (Serial/Row index) if dates are identical
+    const idA = parseInt(String(a.id)) || 0
+    const idB = parseInt(String(b.id)) || 0
+    return sortBy === 'newest' ? idB - idA : idA - idB
   })
 }
