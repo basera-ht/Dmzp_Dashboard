@@ -60,8 +60,12 @@ export async function processAutomatedCards(): Promise<AutomationResult> {
     const sentEmails = new Set(sentLogs.map(l => l.email))
     result.alreadySent = sentEmails.size
 
-    // Filter for new members who haven't received a card
-    const newMembers = entries.filter(e => e.email && !sentEmails.has(e.email))
+    // Filter for new members who haven't received a card AND have paid their fees
+    const newMembers = entries.filter(e => 
+      e.email && 
+      !sentEmails.has(e.email) && 
+      e.fees?.toLowerCase() === 'yes'
+    )
     result.newMembers = newMembers.length
 
     if (newMembers.length === 0) {
