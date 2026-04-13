@@ -258,18 +258,18 @@ function generateMembershipCardHtml(member: MemberCardData): string {
 }
 
 function createTransporter() {
-  // Always read fresh from process.env to avoid stale config cache
+  // Always read fresh from process.env — DO NOT cache at module level
   const host = process.env.SMTP_HOST || 'smtp.gmail.com'
   const port = parseInt(process.env.SMTP_PORT || '587', 10)
   const user = process.env.SMTP_USER || ''
   const pass = process.env.SMTP_PASS || ''
 
-  console.log(`[Email] SMTP config: host=${host} port=${port} user=${user} pass=${pass ? '***set***' : 'NOT SET'}`)
-
   if (!user || !pass) {
-    console.error('[Email] SMTP_USER or SMTP_PASS is missing in .env')
+    console.error(`[Email] ❌ SMTP credentials missing — SMTP_USER=${user ? 'set' : 'MISSING'} SMTP_PASS=${pass ? 'set' : 'MISSING'}`)
     return null
   }
+
+  console.log(`[Email] SMTP: host=${host} port=${port} user=${user}`)
 
   return nodemailer.createTransport({
     host,
@@ -280,14 +280,18 @@ function createTransporter() {
   })
 }
 
-// Initialize the transporter once at the module level for pooling/performance
-export const transporter = createTransporter()
+// Lazy transporter — created fresh on each call so Vercel env vars are always current
+// DO NOT initialise at module level: serverless cold-starts may not have env vars yet
+export let transporter: ReturnType<typeof nodemailer.createTransport> | null = null
 
 export async function sendMembershipCard(member: MemberCardData): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!transporter) {
-      return { success: false, error: 'Email service not configured. Set SMTP_USER and SMTP_PASS in server/.env' }
+    // Create (or recreate) the transporter fresh so we always pick up current env vars
+    const freshTransporter = createTransporter()
+    if (!freshTransporter) {
+      return { success: false, error: 'Email not configured — set SMTP_USER and SMTP_PASS in Vercel Environment Variables' }
     }
+    transporter = freshTransporter
 
     const html = generateMembershipCardHtml(member)
     const from = process.env.SMTP_FROM || `DMZP <${process.env.SMTP_USER}>`
@@ -295,7 +299,7 @@ export async function sendMembershipCard(member: MemberCardData): Promise<{ succ
     const safeName = member.name.replace(/[^a-zA-Z0-9]/g, '_')
     const pdfFilename = `DMZP_Membership_Card_${safeName}.pdf`
 
-    const info = await transporter.sendMail({
+    const info = await freshTransporter.sendMail({
       from,
       to: member.email,
       subject: `Welcome to DMZP — Your Membership Card`,

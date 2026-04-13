@@ -16,6 +16,11 @@ const BLOCK_DURATION_MS = 15 * 60 * 1000
 const blockedIPs: { [key: string]: number } = {}
 
 export function rateLimiter(req: Request, res: Response, next: NextFunction) {
+  // Exempt cron/automation endpoints from rate limiting
+  if (req.path.startsWith('/automation/')) {
+    return next()
+  }
+
   const ip = req.ip || req.socket.remoteAddress || 'unknown'
   
   if (blockedIPs[ip] && Date.now() < blockedIPs[ip]) {
