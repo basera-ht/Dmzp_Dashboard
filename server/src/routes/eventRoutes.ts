@@ -2,6 +2,7 @@ import { Router } from 'express'
 import multer from 'multer'
 import { eventController } from '../controllers/index.js'
 import { uploadFileToS3 } from '../services/s3Service.js'
+import { config } from '../config/index.js'
 import {
   sendEventEmail,
   broadcastToAllMembers,
@@ -179,7 +180,7 @@ router.post('/:id/poster', posterUpload.single('poster'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file uploaded' })
     }
 
-    const folder = process.env.AWS_S3_EVENTS_FOLDER || 'events'
+    const folder = config.aws.eventsFolder
     const uploadResult = await uploadFileToS3(
       req.file.buffer,
       req.file.originalname,
