@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/database/seed.ts",
+    "db:sync": "tsx src/database/syncSheetsToDb.ts",
     "db:setup": "drizzle-kit push && tsx src/database/seed.ts",
     "test": "vitest run"
   },
@@ -45,7 +46,7 @@
     "@types/pdfkit": "^0.17.5",
     "@types/react": "18.3.1",
     "@types/react-dom": "18.3.1",
-    "drizzle-kit": "^0.30.1",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"

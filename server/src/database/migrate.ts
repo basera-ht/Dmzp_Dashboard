@@ -1,18 +1,22 @@
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import { db } from './index.js'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-async function migrate() {
-  console.log('Running migrations...')
-  console.log('Note: Use "npm run db:push" or "npm run db:studio" for schema management with Drizzle.')
-  console.log('This script is a placeholder for custom migration logic.')
-  
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+async function runMigrations() {
+  console.log('Running database migrations...')
   try {
-    console.log('Database connection successful!')
-    console.log('Migrations would be handled by Drizzle Kit.')
+    const migrationsFolder = path.resolve(__dirname, '../../drizzle')
+    await migrate(db, { migrationsFolder })
+    console.log('✅ Database migrations applied successfully!')
     process.exit(0)
   } catch (error) {
-    console.error('Migration failed:', error)
+    console.error('❌ Migration failed:', error)
     process.exit(1)
   }
 }
 
-migrate()
+runMigrations()
