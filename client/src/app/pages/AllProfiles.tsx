@@ -250,17 +250,11 @@ export function AllProfiles() {
         });
         toast.success('Member updated successfully');
       } else {
-        // For sheet members: create new DB record and hide the sheet entry
-        // This effectively "overwrites" the sheet data with our corrected DB data
+        // For sheet members: create new DB record which will override sheet data in getUnifiedEntries()
         await apiClient.post('/members', {
           ...editFormData,
           memberType: 'Student',
         });
-        
-        // Hide the original sheet entry
-        if (editingMember.email) {
-          await apiClient.post('/form-data/hide', { email: editingMember.email });
-        }
         
         toast.success('Member data updated (migrated to database)');
       }

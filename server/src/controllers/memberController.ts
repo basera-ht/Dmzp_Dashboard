@@ -82,6 +82,9 @@ export const memberController = {
     if (insertData.joinDate && typeof insertData.joinDate === 'string') {
       insertData.joinDate = new Date(insertData.joinDate)
     }
+    if (insertData.email) {
+      await db.delete(hiddenMembers).where(eq(hiddenMembers.email, insertData.email.toLowerCase())).catch(() => {})
+    }
     const result = await db.insert(members).values(insertData).returning()
     return { success: true, data: result[0] }
   },
@@ -90,6 +93,9 @@ export const memberController = {
     const updateData = { ...data }
     if (updateData.joinDate && typeof updateData.joinDate === 'string') {
       updateData.joinDate = new Date(updateData.joinDate)
+    }
+    if (updateData.email) {
+      await db.delete(hiddenMembers).where(eq(hiddenMembers.email, updateData.email.toLowerCase())).catch(() => {})
     }
     const result = await db
       .update(members)
