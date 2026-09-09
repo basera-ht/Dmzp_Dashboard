@@ -161,7 +161,7 @@ export function AllProfiles() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await apiClient.post('/members', {
+      const created = await apiClient.post<{ id: number }>('/members', {
         name: newMember.name,
         email: newMember.email,
         phone: newMember.phone,
@@ -174,11 +174,9 @@ export function AllProfiles() {
       });
 
       // Auto-send membership card only if fees are confirmed paid
-      if (newMember.email && newMember.fees === 'yes') {
+      if (created.success && created.data?.id && newMember.fees === 'yes') {
         await apiClient.post('/member-card/send', {
-          name: newMember.name,
-          email: newMember.email,
-          fees: newMember.fees,
+          memberId: created.data.id,
         });
       }
 
@@ -200,13 +198,7 @@ export function AllProfiles() {
     setCardSentFor(null);
     try {
       const res = await apiClient.post('/member-card/send', {
-        name: entry.name,
-        email: entry.email,
-        fees: entry.fees,
-        id: entry.id,
-        bloodGroup: entry.bloodGroup,
-        address: entry.address,
-        phone: entry.phone
+        memberId: entry.id,
       });
       if (res.success) {
         setCardSentFor(key);
@@ -853,7 +845,7 @@ export function AllProfiles() {
                   Close
                 </button>
                 <a
-                  href={`${API_BASE_URL}/member-card/preview?name=${encodeURIComponent(selectedMember.name || '')}&email=${encodeURIComponent(selectedMember.email || '')}&id=${encodeURIComponent(selectedMember.id || '')}&bloodGroup=${encodeURIComponent(selectedMember.bloodGroup || '')}&address=${encodeURIComponent(selectedMember.address || '')}`}
+                  href={`${API_BASE_URL}/member-card/preview/${encodeURIComponent(selectedMember.id || '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"

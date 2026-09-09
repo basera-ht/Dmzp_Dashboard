@@ -2,6 +2,7 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } fro
 import { Upload } from '@aws-sdk/lib-storage'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { config } from '../config/index.js'
+import crypto from 'crypto'
 
 const s3Client = new S3Client({
   region: config.aws.region,
@@ -25,7 +26,11 @@ export async function uploadFileToS3(
   folder?: string
 ): Promise<UploadResult> {
   try {
-    const key = `${folder || 'reports'}/${Date.now()}-${fileName}`
+    const extensions: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
+    const extension = extensions[contentType]
+    if (!extension) return { success: false, error: 'Unsupported file type' }
+    // Never put a user-supplied filename into an object key.
+    const key = `${folder || 'reports'}/${crypto.randomUUID()}.${extension}`
 
     const upload = new Upload({
       client: s3Client,
@@ -34,6 +39,7 @@ export async function uploadFileToS3(
         Key: key,
         Body: file,
         ContentType: contentType,
+        ContentDisposition: 'attachment',
       },
     })
 

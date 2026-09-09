@@ -1,6 +1,7 @@
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import crypto from 'crypto'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // Load from the project root .env (works for both monorepo root and server-only runs)
@@ -17,6 +18,9 @@ function envBool(name: string, defaultValue: boolean): boolean {
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
+  auth: {
+    tokenSecret: process.env.AUTH_TOKEN_SECRET || process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex')),
+  },
   database: {
     url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/dashboard',
   },
@@ -55,6 +59,9 @@ export const config = {
       .map((s) => s.trim())
       .filter(Boolean),
   },
+}
+if (config.nodeEnv === 'production' && !config.auth.tokenSecret) {
+  throw new Error('AUTH_TOKEN_SECRET (or JWT_SECRET) must be configured in production')
 }
 // Diagnostic startup logs for Vercel troubleshooting
 if (config.nodeEnv !== 'test') {

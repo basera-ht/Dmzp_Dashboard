@@ -56,8 +56,6 @@ describe('isValidPaymentProof', () => {
   })
 
   it('rejects missing payee part', () => {
-    // Note: since we have hardcoded treasurers, this will only fail if it doesn't match any of them
-    // and also doesn't match the opts.payeeParts
     const badOpts = { amount: '150', payeeParts: ['unknown', 'payee'] }
     expect(isValidPaymentProof('150 paid to unknown only', badOpts)).toBe(false)
   })
@@ -66,8 +64,66 @@ describe('isValidPaymentProof', () => {
     expect(isValidPaymentProof('150 to h lalmuanpuia', opts)).toBe(false)
   })
 
+  it('accepts case and whitespace variations with a status marker', () => {
+    expect(isValidPaymentProof('  150   TRANSFERRED to H Lalmuanpuia ', opts)).toBe(true)
+  })
+
+  it('rejects ambiguous text that only mentions an amount and payee', () => {
+    expect(isValidPaymentProof('I owe 150 to h lalmuanpuia', opts)).toBe(false)
+  })
+
+  it('rejects a malformed payee despite a status marker', () => {
+    expect(isValidPaymentProof('150 paid to h lalmuan', opts)).toBe(false)
+  })
+
   it('rejects empty', () => {
     expect(isValidPaymentProof('', opts)).toBe(false)
+  })
+
+  // ── Additional edge-case tests ───────────────────────────────────────
+
+  it('rejects whitespace-only input', () => {
+    expect(isValidPaymentProof('   \t  \n  ', opts)).toBe(false)
+  })
+
+  it('rejects just an amount with no payee or marker', () => {
+    expect(isValidPaymentProof('150', opts)).toBe(false)
+  })
+
+  it('rejects just a payee name with no amount or marker', () => {
+    expect(isValidPaymentProof('h lalmuanpuia', opts)).toBe(false)
+  })
+
+  it('rejects XSS-like input', () => {
+    expect(isValidPaymentProof('<script>alert("xss")</script>', opts)).toBe(false)
+  })
+
+  it('rejects SQL injection attempt without valid proof markers', () => {
+    expect(isValidPaymentProof("'; DROP TABLE members; --", opts)).toBe(false)
+  })
+
+  it('accepts file attachment reference (.jpg)', () => {
+    expect(isValidPaymentProof('payment_screenshot.jpg', opts)).toBe(true)
+  })
+
+  it('accepts file attachment reference (.pdf)', () => {
+    expect(isValidPaymentProof('receipt.pdf', opts)).toBe(true)
+  })
+
+  it('accepts UPI ID with treasurer phone', () => {
+    expect(isValidPaymentProof('8920446062@ptsbi', opts)).toBe(true)
+  })
+
+  it('accepts emoji checkmark ✅ with amount and payee', () => {
+    expect(isValidPaymentProof('150 ✅ h lalmuanpuia', opts)).toBe(true)
+  })
+
+  it('rejects "transferred" without amount', () => {
+    expect(isValidPaymentProof('transferred to h lalmuanpuia', opts)).toBe(false)
+  })
+
+  it('rejects amount with wrong payee and marker', () => {
+    expect(isValidPaymentProof('150 paid to some random person', opts)).toBe(false)
   })
 })
 

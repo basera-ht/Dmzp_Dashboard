@@ -13,34 +13,9 @@ interface ApiResponse<T> {
 
 class ApiClient {
   private baseUrl: string
-  private token: string | null = null
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl
-    this.token = this.getStoredToken()
-  }
-
-  private getStoredToken(): string | null {
-    if (typeof window === 'undefined') return null
-    return localStorage.getItem('auth_token')
-  }
-
-  private setStoredToken(token: string | null): void {
-    if (typeof window === 'undefined') return
-    if (token) {
-      localStorage.setItem('auth_token', token)
-    } else {
-      localStorage.removeItem('auth_token')
-    }
-  }
-
-  setToken(token: string | null): void {
-    this.token = token
-    this.setStoredToken(token)
-  }
-
-  getToken(): string | null {
-    return this.token
   }
 
   private async request<T>(
@@ -53,10 +28,6 @@ class ApiClient {
       'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
       ...options.headers,
-    }
-
-    if (this.token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`
     }
 
     try {
@@ -84,10 +55,6 @@ class ApiClient {
         const error: ApiError = {
           message: data.error || data.message || 'An error occurred',
           code: data.code,
-        }
-        
-        if (response.status === 401) {
-          this.setToken(null)
         }
         
         throw error
@@ -128,10 +95,6 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`
 
     const headers: Record<string, string> = {}
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`
-    }
-
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -151,10 +114,6 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`
 
     const headers: Record<string, string> = {}
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`
-    }
-
     try {
       const response = await fetch(url, {
         method: 'PUT',

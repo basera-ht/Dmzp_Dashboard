@@ -26,21 +26,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const token = apiClient.getToken()
-      if (!token) {
-        setUser(null)
-        return
-      }
-
       const response = await apiClient.get<User>('/auth/me')
       if (response.success && response.data) {
         setUser(response.data)
       } else {
-        apiClient.setToken(null)
         setUser(null)
       }
     } catch {
-      apiClient.setToken(null)
       setUser(null)
     } finally {
       setIsLoading(false)
@@ -52,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [checkAuth])
 
   const login = async (email: string, password: string) => {
-    const response = await apiClient.post<{ user: User; token: string }>('/auth/login', {
+    const response = await apiClient.post<{ user: User }>('/auth/login', {
       email,
       password,
     })
@@ -61,12 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(response.error || 'Login failed')
     }
 
-    apiClient.setToken(response.data.token)
     setUser(response.data.user)
   }
 
   const register = async (email: string, password: string, name: string) => {
-    const response = await apiClient.post<{ user: User; token: string }>('/auth/register', {
+    const response = await apiClient.post<{ user: User }>('/auth/register', {
       email,
       password,
       name,
@@ -76,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(response.error || 'Registration failed')
     }
 
-    apiClient.setToken(response.data.token)
     setUser(response.data.user)
   }
 
@@ -86,20 +76,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore logout errors
     } finally {
-      apiClient.setToken(null)
       setUser(null)
     }
   }
 
   const refreshToken = async () => {
     try {
-      const response = await apiClient.post<{ user: User; token: string }>('/auth/refresh')
+      const response = await apiClient.post<{ user: User }>('/auth/refresh')
       if (response.success && response.data) {
-        apiClient.setToken(response.data.token)
         setUser(response.data.user)
       }
     } catch {
-      apiClient.setToken(null)
       setUser(null)
     }
   }

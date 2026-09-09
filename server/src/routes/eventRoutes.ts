@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { z } from 'zod'
 import multer from 'multer'
 import { eventController } from '../controllers/index.js'
 import { uploadFileToS3 } from '../services/s3Service.js'
@@ -13,9 +14,14 @@ import {
   getAllMembersForEmail,
 } from '../services/emailBroadcastService.js'
 import type { NewEvent } from '../models/index.js'
+import { positiveIdParam, pagination, asyncHandler } from '../middleware/index.js'
 
 const router = Router()
+router.param('id', positiveIdParam())
 const EVENT_STATUSES = new Set(['Upcoming', 'Ongoing', 'Completed', 'Cancelled'])
+
+const emailSchema = z.string().trim().email().max(320)
+const emailsArraySchema = z.array(emailSchema).min(1).max(500)
 
 function normalizeEventPayload(payload: Record<string, any>, isUpdate = false): { data?: Partial<NewEvent>; error?: string } {
   const hasOwn = (key: string) => Object.prototype.hasOwnProperty.call(payload, key)
@@ -95,136 +101,107 @@ const posterUpload = multer({
   },
 })
 
-router.get('/', async (req, res) => {
-  const page = parseInt(req.query.page as string) || 1
-  const limit = parseInt(req.query.limit as string) || 10
-  const result = await eventController.getAll(page, limit)
+router.get('/', asyncHandler(async (req, res) => {
+  const pageInfo = pagination(req)
+  if (!pageInfo) return res.status(400).json({ success: false, error: 'Invalid pagination' })
+  const result = await eventController.getAll(pageInfo.page, pageInfo.limit)
   res.json(result)
-})
+}))
 
-router.get('/upcoming', async (req, res) => {
-  const limit = parseInt(req.query.limit as string) || 5
+router.get('/upcoming', asyncHandler(async (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 5, 1), 50)
   const result = await eventController.getUpcoming(limit)
   res.json(result)
-})
+}))
 
-router.get('/members/list', async (_req, res) => {
-  try {
-    const members = await getAllMembersForEmail()
-    res.json({ success: true, data: members })
-  } catch (error: any) {
-    console.error('[EventRoutes] Error getting members:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to get members' })
-  }
-})
+router.get('/members/list', asyncHandler(async (_req, res) => {
+  const members = await getAllMembersForEmail()
+  res.json({ success: true, data: members })
+}))
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const id = parseInt(req.params.id as string)
   const result = await eventController.getById(id)
   res.json(result)
-})
+}))
 
-router.post('/', async (req, res) => {
-  try {
-    const normalized = normalizeEventPayload(req.body as Record<string, any>)
-    if (normalized.error || !normalized.data) {
-      return res.status(400).json({ success: false, error: normalized.error || 'Invalid event payload' })
-    }
-
-    const result = await eventController.create(normalized.data as NewEvent)
-    res.status(201).json(result)
-  } catch (error: any) {
-    console.error('[EventRoutes] Error creating event:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to create event' })
+router.post('/', asyncHandler(async (req, res) => {
+  const normalized = normalizeEventPayload(req.body as Record<string, any>)
+  if (normalized.error || !normalized.data) {
+    return res.status(400).json({ success: false, error: normalized.error || 'Invalid event payload' })
   }
-})
 
-router.put('/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id as string)
+  const result = await eventController.create(normalized.data as NewEvent)
+  res.status(201).json(result)
+}))
 
-    const existing = await eventController.getById(id)
-    if (!existing.success) {
-      return res.status(404).json({ success: false, error: 'Event not found' })
-    }
+router.put('/:id', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
 
-    const normalized = normalizeEventPayload(req.body as Record<string, any>, true)
-    if (normalized.error || !normalized.data) {
-      return res.status(400).json({ success: false, error: normalized.error || 'Invalid event payload' })
-    }
-
-    const result = await eventController.update(id, normalized.data)
-    res.json(result)
-  } catch (error: any) {
-    console.error('[EventRoutes] Error updating event:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to update event' })
+  const existing = await eventController.getById(id)
+  if (!existing.success) {
+    return res.status(404).json({ success: false, error: 'Event not found' })
   }
-})
 
-router.delete('/:id', async (req, res) => {
+  const normalized = normalizeEventPayload(req.body as Record<string, any>, true)
+  if (normalized.error || !normalized.data) {
+    return res.status(400).json({ success: false, error: normalized.error || 'Invalid event payload' })
+  }
+
+  const result = await eventController.update(id, normalized.data)
+  res.json(result)
+}))
+
+router.delete('/:id', asyncHandler(async (req, res) => {
   const id = parseInt(req.params.id as string)
   const result = await eventController.delete(id)
   res.json(result)
-})
+}))
 
-router.post('/:id/poster', posterUpload.single('poster'), async (req, res) => {
-  try {
-    const id = parseInt(req.params.id as string)
+router.post('/:id/poster', posterUpload.single('poster'), asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
 
-    const event = await eventController.getById(id)
-    if (!event.success) {
-      return res.status(404).json({ success: false, error: 'Event not found' })
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No file uploaded' })
-    }
-
-    const folder = config.aws.eventsFolder
-    const uploadResult = await uploadFileToS3(
-      req.file.buffer,
-      req.file.originalname,
-      req.file.mimetype,
-      folder
-    )
-
-    if (!uploadResult.success || !uploadResult.url) {
-      return res.status(500).json({ success: false, error: uploadResult.error || 'Upload failed' })
-    }
-
-    const result = await eventController.upsertPoster(id, uploadResult.url)
-    res.json(result)
-  } catch (error: any) {
-    console.error('[EventRoutes] Error uploading poster:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to upload poster' })
+  const event = await eventController.getById(id)
+  if (!event.success) {
+    return res.status(404).json({ success: false, error: 'Event not found' })
   }
-})
 
-router.get('/:id/poster', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id as string)
-    const result = await eventController.getPosterUrl(id)
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'No file uploaded' })
+  }
 
-    if (result.success) {
-      res.json(result)
-    } else {
-      res.json({ success: true, data: { posterUrl: null } })
-    }
-  } catch (error: any) {
+  const folder = config.aws.eventsFolder
+  const uploadResult = await uploadFileToS3(
+    req.file.buffer,
+    req.file.originalname,
+    req.file.mimetype,
+    folder
+  )
+
+  if (!uploadResult.success || !uploadResult.url) {
+    return res.status(500).json({ success: false, error: 'Upload failed' })
+  }
+
+  const result = await eventController.upsertPoster(id, uploadResult.url)
+  res.json(result)
+}))
+
+router.get('/:id/poster', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+  const result = await eventController.getPosterUrl(id)
+
+  if (result.success) {
+    res.json(result)
+  } else {
     res.json({ success: true, data: { posterUrl: null } })
   }
-})
+}))
 
-router.delete('/:id/poster', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id as string)
-    const result = await eventController.deletePoster(id)
-    res.json(result)
-  } catch (error: any) {
-    console.error('[EventRoutes] Error deleting poster:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to delete poster' })
-  }
-})
+router.delete('/:id/poster', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+  const result = await eventController.deletePoster(id)
+  res.json(result)
+}))
 
 async function getEventWithPoster(eventId: number) {
   const event = await eventController.getById(eventId)
@@ -244,155 +221,120 @@ async function getEventWithPoster(eventId: number) {
   }
 }
 
-router.get('/:id/preview-email', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id as string)
-    const eventData = await getEventWithPoster(id)
+router.get('/:id/preview-email', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+  const eventData = await getEventWithPoster(id)
 
-    if (!eventData) {
-      return res.status(404).json({ success: false, error: 'Event not found' })
-    }
-
-    const html = generateEventEmailHtml(eventData)
-    res.json({ success: true, data: { html } })
-  } catch (error: any) {
-    console.error('[EventRoutes] Error generating preview:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to generate preview' })
+  if (!eventData) {
+    return res.status(404).json({ success: false, error: 'Event not found' })
   }
-})
 
-router.post('/:id/send-test-email', async (req, res) => {
-  try {
-    const { testEmail } = req.body
-    if (!testEmail) {
-      return res.status(400).json({ success: false, error: 'testEmail is required' })
-    }
+  const html = generateEventEmailHtml(eventData)
+  res.json({ success: true, data: { html } })
+}))
 
-    const id = parseInt(req.params.id as string)
-    const eventData = await getEventWithPoster(id)
-
-    if (!eventData) {
-      return res.status(404).json({ success: false, error: 'Event not found' })
-    }
-
-    const result = await sendEventEmail(eventData, testEmail)
-    res.json(result)
-  } catch (error: any) {
-    console.error('[EventRoutes] Error sending test email:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to send test email' })
+router.post('/:id/send-test-email', asyncHandler(async (req, res) => {
+  const parsed = emailSchema.safeParse(req.body?.testEmail)
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, error: 'A valid testEmail is required' })
   }
-})
 
-router.post('/:id/send-single', async (req, res) => {
-  try {
-    const { email } = req.body
-    if (!email) {
-      return res.status(400).json({ success: false, error: 'email is required' })
-    }
+  const id = parseInt(req.params.id as string)
+  const eventData = await getEventWithPoster(id)
 
-    const id = parseInt(req.params.id as string)
-    const eventData = await getEventWithPoster(id)
-
-    if (!eventData) {
-      return res.status(404).json({ success: false, error: 'Event not found' })
-    }
-
-    const result = await sendEventEmail(eventData, email)
-    res.json(result)
-  } catch (error: any) {
-    console.error('[EventRoutes] Error sending single email:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to send email' })
+  if (!eventData) {
+    return res.status(404).json({ success: false, error: 'Event not found' })
   }
-})
 
-router.post('/:id/send-to-members', async (req, res) => {
-  try {
-    const { emails } = req.body
-    if (!emails || !Array.isArray(emails) || emails.length === 0) {
-      return res.status(400).json({ success: false, error: 'emails array is required' })
-    }
+  const result = await sendEventEmail(eventData, parsed.data)
+  res.json(result)
+}))
 
-    const id = parseInt(req.params.id as string)
-    const eventData = await getEventWithPoster(id)
+router.post('/:id/send-single', asyncHandler(async (req, res) => {
+  const parsed = emailSchema.safeParse(req.body?.email)
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, error: 'A valid email is required' })
+  }
 
-    if (!eventData) {
-      return res.status(404).json({ success: false, error: 'Event not found' })
-    }
+  const id = parseInt(req.params.id as string)
+  const eventData = await getEventWithPoster(id)
 
-    const results = await Promise.allSettled(
-      emails.map((email: string) => sendEventEmail(eventData, email))
-    )
+  if (!eventData) {
+    return res.status(404).json({ success: false, error: 'Event not found' })
+  }
 
-    const sent = results.filter(r => r.status === 'fulfilled' && r.value.success).length
-    const failed = results.length - sent
+  const result = await sendEventEmail(eventData, parsed.data)
+  res.json(result)
+}))
 
-    res.json({
+router.post('/:id/send-to-members', asyncHandler(async (req, res) => {
+  const parsed = emailsArraySchema.safeParse(req.body?.emails)
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, error: 'A valid emails array is required' })
+  }
+
+  const id = parseInt(req.params.id as string)
+  const eventData = await getEventWithPoster(id)
+
+  if (!eventData) {
+    return res.status(404).json({ success: false, error: 'Event not found' })
+  }
+
+  const results = await Promise.allSettled(
+    parsed.data.map((email: string) => sendEventEmail(eventData, email))
+  )
+
+  const sent = results.filter(r => r.status === 'fulfilled' && r.value.success).length
+  const failed = results.length - sent
+
+  res.json({
+    success: true,
+    data: { sent, failed, total: parsed.data.length }
+  })
+}))
+
+router.post('/:id/broadcast', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+
+  if (isBroadcastRunning(id)) {
+    return res.status(409).json({ success: false, error: 'Broadcast already in progress' })
+  }
+
+  const eventData = await getEventWithPoster(id)
+
+  if (!eventData) {
+    return res.status(404).json({ success: false, error: 'Event not found' })
+  }
+
+  broadcastToAllMembers(eventData)
+  res.json({ success: true, message: 'Broadcast started' })
+}))
+
+router.get('/:id/broadcast-status', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+  const status = getBroadcastStatus(id)
+
+  if (!status) {
+    const stats = await eventController.getSentCount(id)
+    return res.json({
       success: true,
-      data: { sent, failed, total: emails.length }
+      data: {
+        status: 'not_started',
+        sent: stats.data?.sent || 0,
+        failed: stats.data?.failed || 0,
+        total: 0,
+      },
     })
-  } catch (error: any) {
-    console.error('[EventRoutes] Error sending to members:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to send emails' })
   }
-})
 
-router.post('/:id/broadcast', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id as string)
+  res.json({ success: true, data: status })
+}))
 
-    if (isBroadcastRunning(id)) {
-      return res.status(409).json({ success: false, error: 'Broadcast already in progress' })
-    }
+router.post('/:id/broadcast-cancel', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+  const cancelled = cancelBroadcast(id)
 
-    const eventData = await getEventWithPoster(id)
-
-    if (!eventData) {
-      return res.status(404).json({ success: false, error: 'Event not found' })
-    }
-
-    broadcastToAllMembers(eventData)
-    res.json({ success: true, message: 'Broadcast started' })
-  } catch (error: any) {
-    console.error('[EventRoutes] Error starting broadcast:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to start broadcast' })
-  }
-})
-
-router.get('/:id/broadcast-status', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id as string)
-    const status = getBroadcastStatus(id)
-
-    if (!status) {
-      const stats = await eventController.getSentCount(id)
-      return res.json({
-        success: true,
-        data: {
-          status: 'not_started',
-          sent: stats.data?.sent || 0,
-          failed: stats.data?.failed || 0,
-          total: 0,
-        },
-      })
-    }
-
-    res.json({ success: true, data: status })
-  } catch (error: any) {
-    console.error('[EventRoutes] Error getting broadcast status:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to get status' })
-  }
-})
-
-router.post('/:id/broadcast-cancel', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id as string)
-    const cancelled = cancelBroadcast(id)
-
-    res.json({ success: true, cancelled })
-  } catch (error: any) {
-    console.error('[EventRoutes] Error cancelling broadcast:', error)
-    res.status(500).json({ success: false, error: error.message || 'Failed to cancel broadcast' })
-  }
-})
+  res.json({ success: true, cancelled })
+}))
 
 export default router

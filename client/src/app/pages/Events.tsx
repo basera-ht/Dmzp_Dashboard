@@ -352,15 +352,7 @@ export function Events() {
       const formData = new FormData();
       formData.append('poster', file);
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/events/${eventId}/poster`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
-        },
-        body: formData,
-      });
-      
-      const result = await response.json();
+      const result = await apiClient.postForm(`/events/${eventId}/poster`, formData);
       
       if (result.success) {
         await fetchEvents();

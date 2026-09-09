@@ -1,46 +1,45 @@
 import { Router } from 'express'
 import { authController } from '../controllers/authController.js'
-import { authMiddleware } from '../middleware/auth.js'
-import { rateLimiter, loginRateLimiter } from '../middleware/rateLimiter.js'
+import { authMiddleware, clearAuthCookies, getAccessToken, getRefreshToken, revokeSessionToken, setAuthCookies } from '../middleware/auth.js'
+import { loginRateLimiter, rateLimiter, asyncHandler } from '../middleware/index.js'
 import type { AuthRequest } from '../middleware/auth.js'
 
 const router = Router()
 
-router.post('/login', rateLimiter, loginRateLimiter, async (req, res) => {
-  const { email, password } = req.body
-  const ip = req.ip || req.socket.remoteAddress
-  
-  const result = await authController.login(email, password, ip)
+router.post('/login', loginRateLimiter, asyncHandler(async (req, res) => {
+  const result = await authController.login(req.body?.email, req.body?.password)
+  if (result.success && result.data?.session) setAuthCookies(res, result.data.session)
+  if (result.success) delete result.data.session
   res.status(result.success ? 200 : 401).json(result)
-})
+}))
 
-router.post('/register', rateLimiter, async (req, res) => {
-  const { email, password, name } = req.body
-  const result = await authController.register({ email, password, name })
+router.post('/register', rateLimiter, asyncHandler(async (req, res) => {
+  const result = await authController.register(req.body || {})
+  if (result.success && result.data?.session) setAuthCookies(res, result.data.session)
+  if (result.success) delete result.data.session
   res.status(result.success ? 201 : 400).json(result)
-})
+}))
 
-router.get('/me', authMiddleware, async (req, res) => {
-  const result = await authController.me(req as AuthRequest)
+router.get('/me', authMiddleware, asyncHandler(async (req, res) => res.json(await authController.me(req as AuthRequest))))
+
+router.post('/refresh', rateLimiter, asyncHandler(async (req, res) => {
+  const result = await authController.refresh(getRefreshToken(req))
+  if (result.success && result.data?.session) setAuthCookies(res, result.data.session)
+  if (result.success) delete result.data.session
   res.status(result.success ? 200 : 401).json(result)
-})
+}))
 
-router.post('/refresh', async (req, res) => {
-  const { refreshToken } = req.body
-  const result = await authController.refresh(refreshToken)
-  res.status(result.success ? 200 : 401).json(result)
-})
+router.post('/logout', authMiddleware, asyncHandler(async (req, res) => {
+  await revokeSessionToken(getAccessToken(req))
+  await revokeSessionToken(getRefreshToken(req))
+  clearAuthCookies(res)
+  res.json({ success: true, message: 'Logged out successfully' })
+}))
 
-router.post('/logout', authMiddleware, async (req, res) => {
-  const token = req.headers.authorization?.substring(7)
-  const result = await authController.logout(token || '')
-  res.status(result.success ? 200 : 500).json(result)
-})
-
-router.post('/change-password', authMiddleware, async (req: AuthRequest, res) => {
-  const { oldPassword, newPassword } = req.body
-  const result = await authController.changePassword(req as AuthRequest, oldPassword, newPassword)
+router.post('/change-password', authMiddleware, asyncHandler(async (req, res) => {
+  const result = await authController.changePassword(req as AuthRequest, req.body?.oldPassword, req.body?.newPassword)
+  clearAuthCookies(res)
   res.status(result.success ? 200 : 400).json(result)
-})
+}))
 
 export default router

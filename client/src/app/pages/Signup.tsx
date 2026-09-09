@@ -53,7 +53,7 @@ export function SignupPage() {
 
     try {
       await signup(data.email, data.password, data.name)
-      navigate('/dashboard', { replace: true })
+      navigate('/', { replace: true })
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.')
     } finally {

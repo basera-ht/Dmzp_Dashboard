@@ -106,7 +106,7 @@ export function Reports() {
       const response = await fetch(`${API_BASE}/reports/${reportId}/upload`, {
         method: 'POST',
         body: formData,
-        headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+        credentials: 'include',
       });
       const result = await response.json();
       if (result.success) {
@@ -127,7 +127,7 @@ export function Reports() {
     setDownloading(report.id);
     try {
       const res = await fetch(`${API_BASE}/reports/${report.id}/download`, {
-        headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed');
       const blob = await res.blob();
@@ -148,7 +148,7 @@ export function Reports() {
     setDownloading(report.id);
     try {
       const res = await fetch(`${API_BASE}/reports/${report.id}/download`, {
-        headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();

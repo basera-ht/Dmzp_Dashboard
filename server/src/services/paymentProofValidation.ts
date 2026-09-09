@@ -57,21 +57,14 @@ export function isValidPaymentProof(raw: string, opts: PaymentProofValidationOpt
     return true
   }
 
-  // ── Pass 3: Amount alone (₹150 or "150") + treasurer identifier ──────────
-  // Handles: "Payment to HLalmuanpuia puia ₹150 Paid 1:05am"
-  //          "Paid 150 to hlalmuanpuia"
-  //          "transferred 150 to 8920446062"
+  // Amount matching is deliberately not sufficient: a form response merely
+  // naming the treasurer must not be treated as proof of payment.
   const m = alphanumericSpaced(raw)
   const amountEsc = opts.amount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const amountRe = new RegExp(`\\b${amountEsc}\\b`)
   const hasAmount = amountRe.test(m)
 
-  if (hasAmount && containsTreasurerIdentifier(t)) {
-    // Amount + treasurer = valid, no "paid" keyword required
-    return true
-  }
-
-  // ── Pass 4: Full strict validation (paid keyword + amount + treasurer) ────
+  // ── Full strict validation (paid keyword + amount + treasurer) ────────────
   const hasPaidMarker = (
     t.includes('paid') ||
     t.includes('completed') ||

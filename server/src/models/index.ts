@@ -108,6 +108,17 @@ export const settings = pgTable('settings', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+// Opaque authentication credentials are stored only as hashes so sessions work
+// across serverless instances and can be immediately revoked.
+export const authSessions = pgTable('auth_sessions', {
+  tokenHash: varchar('token_hash', { length: 64 }).primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  type: varchar('type', { length: 16 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  revokedAt: timestamp('revoked_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export type Chapter = typeof chapters.$inferSelect
 export type NewChapter = typeof chapters.$inferInsert
 export type Member = typeof members.$inferSelect
@@ -124,3 +135,4 @@ export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Setting = typeof settings.$inferSelect
 export type NewSetting = typeof settings.$inferInsert
+export type AuthSession = typeof authSessions.$inferSelect

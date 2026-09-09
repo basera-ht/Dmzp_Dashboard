@@ -120,7 +120,6 @@ export function generateMembershipCardPdfBuffer(member: MemberCardData): Promise
 function generateMembershipCardHtml(member: MemberCardData): string {
   const isPaid = member.fees?.toLowerCase() === 'yes'
   const memberInitial = member.name?.charAt(0)?.toUpperCase() || '?'
-  const memberId = `DMZP-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
   const whatsappLink = process.env.WHATSAPP_GROUP_LINK || '[Insert Your WhatsApp Group Link Here]'
   const orgName = process.env.ORG_NAME || 'Delhi Mizo Zirlai Pawl'
   const orgContact = process.env.ORG_CONTACT || '1959dmzp@gmail.com'

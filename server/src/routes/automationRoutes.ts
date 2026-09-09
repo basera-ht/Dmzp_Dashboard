@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { processAutomatedCards } from '../services/automationService.js'
 import { getUnifiedEntries } from '../services/memberDataService.js'
+import { authMiddleware, requireAdmin } from '../middleware/auth.js'
+import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
 
@@ -36,40 +38,36 @@ router.get('/cron-run', async (req, res) => {
     })
   } catch (error: any) {
     console.error('[Automation] Cron execution failed:', error)
-    return res.status(500).json({ error: error.message })
+    return res.status(500).json({ error: 'Automation processing failed' })
   }
 })
 
 /**
- * Diagnostic endpoint — no auth required so you can check state anytime.
+ * Diagnostic endpoint — admin-only with production env-gating.
  * GET /api/automation/debug
  * Shows what the automation sees without actually sending emails.
  */
-router.get('/debug', async (_req, res) => {
+router.get('/debug', authMiddleware, requireAdmin, asyncHandler(async (_req, res) => {
+  if (process.env.NODE_ENV === 'production' && process.env.ENABLE_AUTOMATION_DEBUG !== 'true') {
+    return res.status(404).json({ success: false, error: 'Not found' })
+  }
   try {
     const entries = await getUnifiedEntries(true)
 
-    const breakdown = entries.map(e => ({
-      name: e.name,
-      email: e.email || '(no email)',
-      fees: e.fees,
-      source: e.source,
-      alreadySent: e.cardSent,
-      willProcess: e.email && !e.cardSent && e.fees === 'yes',
-    }))
+    const breakdown = entries.map(e => ({ source: e.source, alreadySent: e.cardSent, willProcess: Boolean(e.email && !e.cardSent && e.fees === 'yes') }))
 
     const summary = {
       totalUnified: entries.length,
       readyToSend: breakdown.filter(e => e.willProcess).length,
       alreadySentCount: breakdown.filter(e => e.alreadySent).length,
-      pendingPayment: breakdown.filter(e => e.fees !== 'yes' && !e.alreadySent).length,
+      pendingPayment: entries.filter(e => e.fees !== 'yes' && !e.cardSent).length,
     }
 
     return res.json({ summary, breakdown })
   } catch (error: any) {
     console.error('[Automation/Debug] Error:', error)
-    return res.status(500).json({ error: error.message })
+    return res.status(500).json({ success: false, error: 'Automation diagnostic failed' })
   }
-})
+}))
 
 export default router

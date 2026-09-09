@@ -46,7 +46,7 @@ export function GuestRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (isAuthenticated) {
-    const from = (location.state as any)?.from?.pathname || '/dashboard'
+    const from = (location.state as any)?.from?.pathname || '/'
     return <Navigate to={from} replace />
   }
 

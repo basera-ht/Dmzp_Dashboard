@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, Lock, User, Database, CheckCircle, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../lib/api';
@@ -16,10 +16,39 @@ export function Settings() {
   const [pwLoading, setPwLoading] = useState(false);
   const [pwMessage, setPwMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // ── Notification prefs (local only — no backend persists these yet) ─
   const [notifEmail, setNotifEmail] = useState(true);
   const [notifNewMember, setNotifNewMember] = useState(true);
   const [notifReports, setNotifReports] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    apiClient.get<any>('/users/settings/me').then(response => {
+      if (!active) return;
+      if (response.success && response.data) {
+        setNotifEmail(Boolean(response.data.emailNotifications));
+        setNotifNewMember(Boolean(response.data.newMemberAlerts));
+        setNotifReports(Boolean(response.data.weeklyReports));
+      }
+    }).catch(() => active && setSettingsError('Unable to load notification settings.')).finally(() => active && setSettingsLoading(false));
+    return () => { active = false; };
+  }, []);
+
+  const updateSettings = async (next: { emailNotifications?: boolean; newMemberAlerts?: boolean; weeklyReports?: boolean }) => {
+    setSettingsError(null);
+    try {
+      const response = await apiClient.put('/users/settings/me', next);
+      if (!response.success) throw new Error(response.error || 'Unable to save settings');
+    } catch {
+      setSettingsError('Unable to save notification settings. Your change was not saved.');
+      // Reload authoritative state rather than leaving an unsaved UI value.
+      const response = await apiClient.get<any>('/users/settings/me');
+      if (response.success && response.data) {
+        setNotifEmail(Boolean(response.data.emailNotifications)); setNotifNewMember(Boolean(response.data.newMemberAlerts)); setNotifReports(Boolean(response.data.weeklyReports));
+      }
+    }
+  };
 
   const handleChangePassword = async () => {
     setPwMessage(null);
@@ -91,6 +120,7 @@ export function Settings() {
             </div>
 
             <div className="space-y-4">
+              {settingsError && <p className="text-sm text-red-600">{settingsError}</p>}
               <div>
                 <label className="block text-sm text-gray-600 mb-2">Full Name</label>
                 <input
@@ -241,7 +271,8 @@ export function Settings() {
                 <input
                   type="checkbox"
                   checked={notifEmail}
-                  onChange={e => setNotifEmail(e.target.checked)}
+                  disabled={settingsLoading}
+                  onChange={e => { setNotifEmail(e.target.checked); void updateSettings({ emailNotifications: e.target.checked }); }}
                   className="w-4 h-4 accent-teal-600 rounded"
                 />
               </label>
@@ -253,7 +284,8 @@ export function Settings() {
                 <input
                   type="checkbox"
                   checked={notifNewMember}
-                  onChange={e => setNotifNewMember(e.target.checked)}
+                  disabled={settingsLoading}
+                  onChange={e => { setNotifNewMember(e.target.checked); void updateSettings({ newMemberAlerts: e.target.checked }); }}
                   className="w-4 h-4 accent-teal-600 rounded"
                 />
               </label>
@@ -265,7 +297,8 @@ export function Settings() {
                 <input
                   type="checkbox"
                   checked={notifReports}
-                  onChange={e => setNotifReports(e.target.checked)}
+                  disabled={settingsLoading}
+                  onChange={e => { setNotifReports(e.target.checked); void updateSettings({ weeklyReports: e.target.checked }); }}
                   className="w-4 h-4 accent-teal-600 rounded"
                 />
               </label>

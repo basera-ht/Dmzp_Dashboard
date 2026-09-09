@@ -72,6 +72,7 @@ export async function processAutomatedCards(): Promise<AutomationResult> {
       const sendResult = await sendMembershipCard({
         name: member.name || 'Member',
         email: member.email,
+        id: member.id != null ? String(member.id) : undefined,
         fees: member.fees,
         bloodGroup: member.bloodGroup,
         address: member.address,
