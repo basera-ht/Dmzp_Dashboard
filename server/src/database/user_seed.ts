@@ -19,7 +19,7 @@ async function seedUser() {
     if (existing.length > 0) {
       console.log('User already exists. Updating password...')
       await db.update(users)
-        .set({ password: hashedPassword, name })
+        .set({ password: hashedPassword, name, role: 'Admin' })
         .where(eq(users.email, email))
       console.log('User updated successfully.')
     } else {

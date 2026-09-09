@@ -69,7 +69,7 @@ export function AllProfiles() {
   useEffect(() => {
     async function fetchEntries() {
       try {
-        const response = await apiClient.get<{ entries: FormEntry[] }>('/form-data/entries?limit=100');
+        const response = await apiClient.get<{ entries: FormEntry[] }>('/form-data/entries?limit=1000');
         if (response.success && response.data) {
           setEntries(response.data.entries);
         }
@@ -161,30 +161,50 @@ export function AllProfiles() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const created = await apiClient.post<{ id: number }>('/members', {
-        name: newMember.name,
-        email: newMember.email,
-        phone: newMember.phone,
-        institution: newMember.institution,
-        course: newMember.course,
-        address: newMember.address,
-        bloodGroup: newMember.bloodGroup,
-        fees: newMember.fees,
-        memberType: 'Student',
-      });
+      const payload = {
+        name: newMember.name.trim(),
+        email: newMember.email.trim(),
+        phone: newMember.phone?.trim() || null,
+        institution: newMember.institution?.trim() || null,
+        course: newMember.course?.trim() || null,
+        address: newMember.address?.trim() || null,
+        bloodGroup: newMember.bloodGroup?.trim() || null,
+        fees: newMember.fees || 'no',
+        memberType: 'Student' as const,
+      };
 
-      // Auto-send membership card only if fees are confirmed paid
-      if (created.success && created.data?.id && newMember.fees === 'yes') {
-        await apiClient.post('/member-card/send', {
-          memberId: created.data.id,
-        });
+      const created = await apiClient.post<{ id: number }>('/members', payload);
+
+      if (!created.success) {
+        toast.error(created.error || 'Failed to add member');
+        return;
       }
 
-      setEntries([newMember, ...entries]);
+      toast.success('Member created successfully');
+
+      // Auto-send membership card only if fees are confirmed paid
+      if (created.data?.id && newMember.fees === 'yes') {
+        try {
+          await apiClient.post('/member-card/send', {
+            memberId: created.data.id,
+          });
+          toast.success('Membership card sent via email');
+        } catch {
+          toast.error('Member created, but failed to send email card');
+        }
+      }
+
+      // Re-fetch fresh entries from the server
+      const response = await apiClient.get<{ entries: FormEntry[] }>('/form-data/entries?limit=1000&refresh=1');
+      if (response.success && response.data) {
+        setEntries(response.data.entries);
+      }
+
       setNewMember({ name: '', email: '', phone: '', institution: '', course: '', address: '', bloodGroup: '', fees: 'no' });
       setIsAddModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to add member', err);
+      toast.error(err.message || 'Failed to add member');
     } finally {
       setIsSubmitting(false);
     }
@@ -234,32 +254,40 @@ export function AllProfiles() {
     
     setIsSubmitting(true);
     try {
-      if (editingMember.source === 'db') {
+      const payload = {
+        name: editFormData.name.trim(),
+        email: editFormData.email.trim(),
+        phone: editFormData.phone?.trim() || null,
+        institution: editFormData.institution?.trim() || null,
+        course: editFormData.course?.trim() || null,
+        address: editFormData.address?.trim() || null,
+        bloodGroup: editFormData.bloodGroup?.trim() || null,
+        fees: editFormData.fees || 'no',
+      };
+
+      if (editingMember.source === 'db' && editingMember.id) {
         // Simple update for existing DB member
-        await apiClient.put(`/members/${editingMember.id}`, {
-          ...editFormData,
-          updatedAt: new Date().toISOString()
-        });
+        await apiClient.put(`/members/${editingMember.id}`, payload);
         toast.success('Member updated successfully');
       } else {
         // For sheet members: create new DB record which will override sheet data in getUnifiedEntries()
         await apiClient.post('/members', {
-          ...editFormData,
+          ...payload,
           memberType: 'Student',
         });
         
-        toast.success('Member data updated (migrated to database)');
+        toast.success('Member data updated (saved to database)');
       }
 
-      // Refresh list
-      const response = await apiClient.get<{ entries: FormEntry[] }>('/form-data/entries?limit=100&refresh=1');
+      // Refresh list with up to 1000 records
+      const response = await apiClient.get<{ entries: FormEntry[] }>('/form-data/entries?limit=1000&refresh=1');
       if (response.success && response.data) {
         setEntries(response.data.entries);
       }
       setIsEditModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update member', err);
-      toast.error('Failed to update member details');
+      toast.error(err.message || 'Failed to update member details');
     } finally {
       setIsSubmitting(false);
     }

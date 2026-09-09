@@ -18,14 +18,14 @@ const memberSchema = z.object({
   chapterId: z.number().int().positive().optional().nullable(),
   joinDate: z.string().optional().nullable(),
   dateOfBirth: z.string().optional().nullable(),
-  memberType: z.enum(['Student', 'Professional', 'Organization']),
+  memberType: z.enum(['Student', 'Professional', 'Organization']).default('Student'),
   status: z.enum(['Active', 'Pending', 'Inactive']).optional(),
-}).strict()
+}).strip()
 
-const memberUpdateSchema = memberSchema.partial()
+const memberUpdateSchema = memberSchema.partial().strip()
 
 router.get('/', asyncHandler(async (req, res) => {
-  const pageInfo = pagination(req)
+  const pageInfo = pagination(req, 20, 1000)
   if (!pageInfo) return res.status(400).json({ success: false, error: 'Invalid pagination' })
   const search = req.query.search as string
   const result = await memberController.getAll(pageInfo.page, pageInfo.limit, search?.slice(0, 255))

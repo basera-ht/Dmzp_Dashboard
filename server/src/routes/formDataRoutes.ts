@@ -22,7 +22,7 @@ router.get('/entries', asyncHandler(async (req, res) => {
   if (refresh) {
     clearCache()
   }
-  const pageInfo = pagination(req, 50)
+  const pageInfo = pagination(req, 100, 1000)
   if (!pageInfo) return res.status(400).json({ success: false, error: 'Invalid pagination' })
   const result = await formDataController.getEntries(pageInfo.page, pageInfo.limit, refresh)
   res.status(result.success ? 200 : 500).json(result)

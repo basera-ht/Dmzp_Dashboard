@@ -83,7 +83,15 @@ export const memberController = {
       insertData.joinDate = new Date(insertData.joinDate)
     }
     if (insertData.email) {
-      await db.delete(hiddenMembers).where(eq(hiddenMembers.email, insertData.email.toLowerCase())).catch(() => {})
+      const email = insertData.email.trim().toLowerCase()
+      insertData.email = email
+      await db.delete(hiddenMembers).where(eq(hiddenMembers.email, email)).catch(() => {})
+
+      const existing = await db.select().from(members).where(eq(members.email, email)).limit(1)
+      if (existing.length > 0) {
+        const result = await db.update(members).set({ ...insertData, updatedAt: new Date() }).where(eq(members.id, existing[0].id)).returning()
+        return { success: true, data: result[0] }
+      }
     }
     const result = await db.insert(members).values(insertData).returning()
     return { success: true, data: result[0] }
