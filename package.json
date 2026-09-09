@@ -14,7 +14,8 @@
     "build:server": "npm run build --workspace=@app/server",
     "db:generate": "npm run db:generate --workspace=@app/server",
     "db:push": "npm run db:push --workspace=@app/server",
-    "db:studio": "npm run db:studio --workspace=@app/server",
+    "db:migrate": "npm run db:migrate --workspace=@app/server",
+    "db:sync": "npm run db:sync --workspace=@app/server",
     "db:seed": "npm run db:seed --workspace=@app/server",
     "db:setup": "npm run db:setup --workspace=@app/server"
   }
