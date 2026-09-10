@@ -1,3 +1,4 @@
+import fs from 'fs'
 import nodemailer from 'nodemailer'
 import PDFDocument from 'pdfkit'
 import path from 'path'
@@ -283,7 +284,7 @@ function createTransporter() {
 // DO NOT initialise at module level: serverless cold-starts may not have env vars yet
 export let transporter: ReturnType<typeof nodemailer.createTransport> | null = null
 
-export async function sendMembershipCard(member: MemberCardData): Promise<{ success: boolean; error?: string }> {
+export async function sendMembershipCard(member: MemberCardData): Promise<{ success: boolean; error?: string; messageId?: string }> {
   try {
     // Create (or recreate) the transporter fresh so we always pick up current env vars
     const freshTransporter = createTransporter()
@@ -292,34 +293,40 @@ export async function sendMembershipCard(member: MemberCardData): Promise<{ succ
     }
     transporter = freshTransporter
 
+    const toEmail = member.email.trim()
     const html = generateMembershipCardHtml(member)
     const from = process.env.SMTP_FROM || `DMZP <${process.env.SMTP_USER}>`
     const pdfBuffer = await generateMembershipCardPdfBuffer(member)
     const safeName = member.name.replace(/[^a-zA-Z0-9]/g, '_')
     const pdfFilename = `DMZP_Membership_Card_${safeName}.pdf`
 
+    const attachments: nodemailer.SendMailOptions['attachments'] = [
+      {
+        filename: pdfFilename,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      },
+    ]
+
+    if (fs.existsSync(LOGO_PATH)) {
+      attachments.push({
+        filename: 'logo.png',
+        path: LOGO_PATH,
+        cid: 'logo_img',
+      })
+    }
+
     const info = await freshTransporter.sendMail({
       from,
-      to: member.email,
+      to: toEmail,
       subject: `Welcome to DMZP — Your Membership Card`,
       html,
       text: `Dear ${member.name},\n\nWelcome to DMZP!\n\nMember Since: 2026-27\nDues: ${member.fees?.toLowerCase() === 'yes' ? 'Paid' : 'Pending'}\n\nDownload your membership card PDF attached to this email.\n\nJoin our WhatsApp community: ${process.env.WHATSAPP_GROUP_LINK || '[WhatsApp Link]'}\n\nDMZP`,
-      attachments: [
-        {
-          filename: pdfFilename,
-          content: pdfBuffer,
-          contentType: 'application/pdf',
-        },
-        {
-          filename: 'logo.png',
-          path: LOGO_PATH,
-          cid: 'logo_img',
-        },
-      ],
+      attachments,
     })
 
-    console.log(`[Email] Card sent to ${member.email} — messageId: ${info.messageId}`)
-    return { success: true }
+    console.log(`[Email] Card sent to ${toEmail} (${member.name}) — messageId: ${info.messageId}`)
+    return { success: true, messageId: info.messageId }
   } catch (error: any) {
     console.error('[Email] sendMail error:', error.message)
     return { success: false, error: error.message || 'Unknown email error' }

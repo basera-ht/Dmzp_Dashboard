@@ -875,7 +875,7 @@ export function AllProfiles() {
                   Close
                 </button>
                 <a
-                  href={`${API_BASE_URL}/member-card/preview/${encodeURIComponent(selectedMember.id || '')}`}
+                  href={`${API_BASE_URL}/member-card/preview/${encodeURIComponent(selectedMember.id || '')}?email=${encodeURIComponent(selectedMember.email || '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
