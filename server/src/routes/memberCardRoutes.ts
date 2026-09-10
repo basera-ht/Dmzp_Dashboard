@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { sendMembershipCard, generateMembershipCardPdfBuffer } from '../services/emailService.js'
 import { db } from '../database/index.js'
-import { members } from '../models/index.js'
+import { members, membershipCardLogs } from '../models/index.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 import { getUnifiedEntries } from '../services/memberDataService.js'
 
@@ -71,6 +71,9 @@ router.post('/send', asyncHandler(async (req, res) => {
   if (!member) return res.status(404).json({ success: false, error: 'Member not found' })
   if (member.fees?.toLowerCase() !== 'yes') return res.status(403).json({ success: false, error: 'Membership card cannot be sent — payment is still pending.' })
   const result = await sendMembershipCard({ name: member.name, email: member.email, fees: member.fees, id: String(member.id), bloodGroup: member.bloodGroup || '', address: member.address || '' })
+  if (result.success) {
+    await db.insert(membershipCardLogs).values({ email: member.email.toLowerCase(), sentAt: new Date() }).catch(() => {})
+  }
   res.status(result.success ? 200 : 503).json(result.success ? { success: true, message: 'Membership card sent' } : { success: false, error: 'Unable to send membership card' })
 }))
 
