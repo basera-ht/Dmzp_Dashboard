@@ -7,9 +7,9 @@ import type { ApiResponse, PaginatedResponse } from '../types/index.js'
 export const memberController = {
   async getAll(page = 1, limit = 10, search?: string): Promise<ApiResponse<PaginatedResponse<any>>> {
     const offset = (page - 1) * limit
-    
+
     const conditions = search ? like(members.name, `%${search}%`) : undefined
-    
+
     const [data, countResult] = await Promise.all([
       db.select({
         id: members.id,
@@ -34,9 +34,9 @@ export const memberController = {
         .offset(offset),
       db.select({ count: sql<number>`count(*)` }).from(members).where(conditions),
     ])
-    
+
     const total = Number(countResult[0]?.count || 0)
-    
+
     return {
       success: true,
       data: {
@@ -69,11 +69,11 @@ export const memberController = {
       .from(members)
       .leftJoin(chapters, eq(members.chapterId, chapters.id))
       .where(eq(members.id, id))
-    
+
     if (result.length === 0) {
       return { success: false, error: 'Member not found' }
     }
-    
+
     return { success: true, data: result[0] }
   },
 
@@ -85,7 +85,7 @@ export const memberController = {
     if (insertData.email) {
       const email = insertData.email.trim().toLowerCase()
       insertData.email = email
-      await db.delete(hiddenMembers).where(eq(hiddenMembers.email, email)).catch(() => {})
+      await db.delete(hiddenMembers).where(eq(hiddenMembers.email, email)).catch(() => { })
 
       const existing = await db.select().from(members).where(eq(members.email, email)).limit(1)
       if (existing.length > 0) {
@@ -103,18 +103,18 @@ export const memberController = {
       updateData.joinDate = new Date(updateData.joinDate)
     }
     if (updateData.email) {
-      await db.delete(hiddenMembers).where(eq(hiddenMembers.email, updateData.email.toLowerCase())).catch(() => {})
+      await db.delete(hiddenMembers).where(eq(hiddenMembers.email, updateData.email.toLowerCase())).catch(() => { })
     }
     const result = await db
       .update(members)
       .set({ ...updateData, updatedAt: new Date() })
       .where(eq(members.id, id))
       .returning()
-    
+
     if (result.length === 0) {
       return { success: false, error: 'Member not found' }
     }
-    
+
     return { success: true, data: result[0] }
   },
 
@@ -157,7 +157,7 @@ export const memberController = {
         .from(members)
         .groupBy(members.memberType),
     ])
-    
+
     return {
       success: true,
       data: {

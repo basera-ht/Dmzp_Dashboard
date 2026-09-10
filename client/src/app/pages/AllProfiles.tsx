@@ -187,6 +187,7 @@ export function AllProfiles() {
         try {
           await apiClient.post('/member-card/send', {
             memberId: created.data.id,
+            email: newMember.email.trim(),
           });
           toast.success('Membership card sent via email');
         } catch {
@@ -219,6 +220,7 @@ export function AllProfiles() {
     try {
       const res = await apiClient.post('/member-card/send', {
         memberId: entry.id,
+        email: entry.email,
       });
       if (res.success) {
         setCardSentFor(key);
