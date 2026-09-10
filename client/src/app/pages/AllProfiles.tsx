@@ -224,12 +224,30 @@ export function AllProfiles() {
       });
       if (res.success) {
         setCardSentFor(key);
+        const targetEmail = entry.email.trim().toLowerCase();
+        // Instantly update UI status to "Mail received" without requiring a page refresh
+        setEntries(prev => prev.map(e => {
+          if (e.email && e.email.trim().toLowerCase() === targetEmail) {
+            return { ...e, cardSent: true };
+          }
+          return e;
+        }));
+        setSelectedMember(prev => {
+          if (prev && prev.email && prev.email.trim().toLowerCase() === targetEmail) {
+            return { ...prev, cardSent: true };
+          }
+          return prev;
+        });
+        toast.success(`Membership card sent to ${entry.email}`);
         setTimeout(() => setCardSentFor(null), 3000);
       } else {
-        setCardError((res.error as string) || 'Failed to send card');
+        const errorMsg = (res.error as string) || 'Failed to send card';
+        setCardError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch {
       setCardError('Network error — could not send card');
+      toast.error('Network error — could not send card');
     } finally {
       setSendingCardFor(null);
     }
@@ -752,7 +770,10 @@ export function AllProfiles() {
                   <h2 className="text-2xl font-bold text-gray-900">{selectedMember.name || 'Unknown Member'}</h2>
                   <p className="text-gray-500">{selectedMember.email || 'No email provided'}</p>
                 </div>
-                {getStatusBadge(selectedMember.fees, selectedMember.paymentProofStatus)}
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                  {getStatusBadge(selectedMember.fees, selectedMember.paymentProofStatus)}
+                  {getMailStatusBadge(selectedMember.cardSent)}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
