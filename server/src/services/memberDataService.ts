@@ -13,7 +13,7 @@ export interface UnifiedEntry extends FormEntry {
  * Strips all non-digit characters from the phone and lowercases the name.
  * Returns empty string if either part is missing (so it can never match).
  */
-function makeNamePhoneKey(name?: string, phone?: string): string {
+export function makeNamePhoneKey(name?: string, phone?: string): string {
   const n = (name || '').trim().toLowerCase()
   const p = (phone || '').trim().replace(/\D/g, '')
   return n && p ? `${n}|${p}` : ''

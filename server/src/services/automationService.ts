@@ -3,9 +3,13 @@ import { db } from '../database/index.js'
 import { membershipCardLogs } from '../models/index.js'
 import { config } from '../config/index.js'
 import { getUnifiedEntries } from './memberDataService.js'
+import { countUnsyncedMembers, syncSheetsToDatabase } from './syncService.js'
 
 let intervalId: NodeJS.Timeout | null = null
 const POLL_INTERVAL = 1 * 60 * 1000 // 1 minute
+
+/** Number of new (un-synced) sheet members that triggers an automatic DB sync. */
+const AUTO_SYNC_THRESHOLD = 10
 
 export interface AutomationResult {
   totalInSheet: number
@@ -15,6 +19,8 @@ export interface AutomationResult {
   paymentPending: number
   emailsSent: number
   emailsFailed: number
+  syncTriggered: boolean
+  syncInserted: number
 }
 
 export async function processAutomatedCards(): Promise<AutomationResult> {
@@ -28,9 +34,29 @@ export async function processAutomatedCards(): Promise<AutomationResult> {
     paymentPending: 0,
     emailsSent: 0,
     emailsFailed: 0,
+    syncTriggered: false,
+    syncInserted: 0,
   }
 
   try {
+    // ── Auto-sync: if enough new sheet members aren't in the DB yet, sync them ──
+    try {
+      const unsynced = await countUnsyncedMembers()
+      console.log(`[Automation] Unsynced sheet members: ${unsynced}`)
+
+      if (unsynced >= AUTO_SYNC_THRESHOLD) {
+        console.log(`[Automation] ≥ ${AUTO_SYNC_THRESHOLD} new members detected — running auto-sync...`)
+        const syncResult = await syncSheetsToDatabase()
+        result.syncTriggered = true
+        result.syncInserted = syncResult.inserted
+        console.log(`[Automation] Auto-sync done. Inserted: ${syncResult.inserted}, Updated: ${syncResult.updated}`)
+      }
+    } catch (syncErr) {
+      // Sync failure is non-fatal — we still continue with card processing
+      console.error('[Automation] Auto-sync check failed (non-fatal):', syncErr)
+    }
+
+    // ── Card processing (existing logic) ──
     // Get unified entries (Sheets + DB Overrides - Hidden)
     const entries = await getUnifiedEntries(true)
     result.totalInSheet = entries.length
