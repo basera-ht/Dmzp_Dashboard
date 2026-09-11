@@ -9,8 +9,20 @@ export interface UnifiedEntry extends FormEntry {
 }
 
 /**
+ * Build a normalised "name|phone" key for dedup.
+ * Strips all non-digit characters from the phone and lowercases the name.
+ * Returns empty string if either part is missing (so it can never match).
+ */
+function makeNamePhoneKey(name?: string, phone?: string): string {
+  const n = (name || '').trim().toLowerCase()
+  const p = (phone || '').trim().replace(/\D/g, '')
+  return n && p ? `${n}|${p}` : ''
+}
+
+/**
  * Fetches data from Google Sheets and the local Database, then merges them.
- * Local DB entries (edits) always take priority over Sheet entries with the same email.
+ * Local DB entries (edits) always take priority over Sheet entries with the
+ * same email **or** the same name + phone number.
  */
 export async function getUnifiedEntries(
   refresh: boolean = false, 
@@ -28,7 +40,7 @@ export async function getUnifiedEntries(
   const sentEmails = new Set(allLogs.map(l => l.email.toLowerCase()))
   const hiddenAtMap = new Map(hiddens.map(h => [h.email.toLowerCase(), h.createdAt]))
   
-  // 2. Prepare DB entries
+  // 2. Prepare DB entries keyed by email
   const dbEntriesMap = new Map<string, UnifiedEntry>()
   dbMembersRows.forEach(m => {
     if (!m.email) return
@@ -49,25 +61,59 @@ export async function getUnifiedEntries(
     })
   })
 
-  // 3. Prepare Sheet entries, skipping those that have a DB override
+  // 2b. Build secondary lookup: name+phone → DB email (for fallback matching)
+  const dbNamePhoneToEmail = new Map<string, string>()
+  dbMembersRows.forEach(m => {
+    if (!m.email) return
+    const key = makeNamePhoneKey(m.name, m.phone || '')
+    if (key) dbNamePhoneToEmail.set(key, m.email.toLowerCase())
+  })
+
+  // 3. Merge Sheet entries, deduplicating against DB (by email OR name+phone)
+  //    and against other sheet entries (to handle repeat form submissions).
   const mergedEntries: UnifiedEntry[] = []
+  const seenEmails = new Set<string>()
+  const seenNamePhone = new Set<string>()
   
   sheetData.allEntries.forEach(e => {
     if (!e.email) return
     const email = e.email.toLowerCase()
-    
+    const npKey = makeNamePhoneKey(e.name, e.phone)
+
+    // Skip sheet-to-sheet duplicates (same email or same name+phone already seen)
+    if (seenEmails.has(email)) return
+    if (npKey && seenNamePhone.has(npKey)) return
+
+    // Primary match: same email → use DB override
     if (dbEntriesMap.has(email)) {
-      // Use the DB override instead of the sheet entry
-      mergedEntries.push(dbEntriesMap.get(email)!)
-      dbEntriesMap.delete(email) // Mark as used
-    } else {
-      // Use the sheet entry
-      mergedEntries.push({
-        ...e,
-        source: 'sheet',
-        cardSent: sentEmails.has(email)
-      })
+      const dbEntry = dbEntriesMap.get(email)!
+      mergedEntries.push(dbEntry)
+      dbEntriesMap.delete(email)
+      seenEmails.add(email)
+      const dbNpKey = makeNamePhoneKey(dbEntry.name, dbEntry.phone)
+      if (dbNpKey) seenNamePhone.add(dbNpKey)
+      return
     }
+
+    // Secondary match: same name+phone → use DB override
+    const matchedEmail = npKey ? dbNamePhoneToEmail.get(npKey) : undefined
+    if (matchedEmail && dbEntriesMap.has(matchedEmail)) {
+      const dbEntry = dbEntriesMap.get(matchedEmail)!
+      mergedEntries.push(dbEntry)
+      dbEntriesMap.delete(matchedEmail)
+      seenEmails.add(matchedEmail)
+      if (npKey) seenNamePhone.add(npKey)
+      return
+    }
+
+    // No DB match — use the sheet entry
+    mergedEntries.push({
+      ...e,
+      source: 'sheet',
+      cardSent: sentEmails.has(email)
+    })
+    seenEmails.add(email)
+    if (npKey) seenNamePhone.add(npKey)
   })
 
   // 4. Add any remaining DB-only entries (members added manually via dashboard)
