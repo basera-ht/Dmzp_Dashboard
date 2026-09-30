@@ -27,6 +27,9 @@ export const config = {
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   },
+  appUrl: (process.env.APP_URL || process.env.FRONTEND_URL || (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN !== '*' ? process.env.CORS_ORIGIN : 'https://dmzp-dashboard-client.vercel.app')).replace(/\/+$/, ''),
+
+
   googleSheets: {
     csvUrl: process.env.GOOGLE_SHEETS_CSV_URL || 'https://docs.google.com/spreadsheets/d/1eHZ09KfWKh5ueauYeGIvFE6zGfA1erxXncsBH9jyAdc/export?format=csv',
     sheetUrl: process.env.GOOGLE_SHEETS_URL || 'https://docs.google.com/spreadsheets/d/1eHZ09KfWKh5ueauYeGIvFE6zGfA1erxXncsBH9jyAdc/edit?usp=sharing',

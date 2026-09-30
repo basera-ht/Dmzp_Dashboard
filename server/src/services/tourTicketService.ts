@@ -321,9 +321,10 @@ export async function sendTourTicketEmail(
     }
 
     // Resolve web origin for the ticket link
-    const frontendOrigin = config.cors.origin && config.cors.origin !== '*'
-      ? config.cors.origin
-      : 'http://localhost:5173'
+    const frontendOrigin = (
+      config.appUrl ||
+      (config.cors.origin && config.cors.origin !== '*' ? config.cors.origin : 'https://dmzp-dashboard-client.vercel.app')
+    ).replace(/\/+$/, '')
 
     const ticketWebUrl = `${frontendOrigin}/tour/${tour.slug}/ticket/${registration.id}`
 
