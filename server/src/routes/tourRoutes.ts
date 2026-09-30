@@ -19,6 +19,7 @@ const tourCreateSchema = z.object({
   price: z.number().int().min(0).optional(),
   upiId: z.string().trim().max(255).nullable().optional(),
   upiQrImage: z.string().max(500).nullable().optional(),
+  whatsappGroupUrl: z.string().trim().max(500).nullable().optional(),
   customFormFields: z.array(z.object({
     id: z.string(),
     label: z.string(),
@@ -162,6 +163,13 @@ router.patch('/registrations/:id/reject', asyncHandler(async (req, res) => {
   const id = parseInt(req.params.id as string)
   const result = await tourController.updatePaymentStatus(id, 'rejected')
   if (!result.success) return res.status(404).json(result)
+  res.json(result)
+}))
+
+router.post('/registrations/:id/send-ticket', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+  const result = await tourController.sendTicket(id)
+  if (!result.success) return res.status(400).json(result)
   res.json(result)
 }))
 

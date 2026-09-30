@@ -156,6 +156,7 @@ export const tours = pgTable('tours', {
   price: integer('price').default(0).notNull(),
   upiId: varchar('upi_id', { length: 255 }),
   upiQrImage: varchar('upi_qr_image', { length: 500 }),
+  whatsappGroupUrl: varchar('whatsapp_group_url', { length: 500 }),
   customFormFields: jsonb('custom_form_fields').$type<CustomFormField[]>().default([]),
   status: tourStatusEnum('status').default('draft').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -173,6 +174,8 @@ export const tourRegistrations = pgTable('tour_registrations', {
   upiTransactionId: varchar('upi_transaction_id', { length: 100 }),
   paymentScreenshotUrl: varchar('payment_screenshot_url', { length: 500 }),
   paymentStatus: paymentStatusEnum('payment_status').default('pending_verification').notNull(),
+  ticketCode: varchar('ticket_code', { length: 50 }),
+  ticketSentAt: timestamp('ticket_sent_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

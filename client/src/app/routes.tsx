@@ -15,6 +15,7 @@ const LoginPage = lazy(() => import('./pages/Login').then(m => ({ default: m.Log
 const SignupPage = lazy(() => import('./pages/Signup').then(m => ({ default: m.SignupPage })))
 const Tours = lazy(() => import('./pages/Tours').then(m => ({ default: m.Tours })))
 const PublicTourView = lazy(() => import('./pages/PublicTourView').then(m => ({ default: m.PublicTourView })))
+const TourTicketView = lazy(() => import('./pages/TourTicketView').then(m => ({ default: m.TourTicketView })))
 
 function PageLoader() {
   return (
@@ -81,6 +82,9 @@ function SuspendedTours() {
 function SuspendedPublicTour() {
   return <Suspense fallback={<PageLoader />}><PublicTourView /></Suspense>
 }
+function SuspendedTourTicket() {
+  return <Suspense fallback={<PageLoader />}><TourTicketView /></Suspense>
+}
 
 export const router = createBrowserRouter([
   {
@@ -106,6 +110,14 @@ export const router = createBrowserRouter([
   {
     path: '/tour/:slug',
     Component: SuspendedPublicTour,
+  },
+  {
+    path: '/tour/:slug/ticket/:regId',
+    Component: SuspendedTourTicket,
+  },
+  {
+    path: '/tours/ticket/:regId',
+    Component: SuspendedTourTicket,
   },
   {
     path: '*',

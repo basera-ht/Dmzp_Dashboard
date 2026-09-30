@@ -4,6 +4,7 @@ import { z } from 'zod'
 import multer from 'multer'
 import { tourController } from '../controllers/tourController.js'
 import { uploadFileToS3 } from '../services/s3Service.js'
+import { generateTourTicketPdfBuffer } from '../services/tourTicketService.js'
 import { asyncHandler } from '../middleware/index.js'
 
 const router = Router()
@@ -161,5 +162,37 @@ router.post(
     res.status(201).json(registrationResult)
   })
 )
+
+// ── Public: View Ticket Details ───────────────────────────────────────────
+
+router.get('/registrations/:id/ticket', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+  if (isNaN(id) || id <= 0) return res.status(400).json({ success: false, error: 'Invalid registration ID' })
+
+  const result = await tourController.getRegistrationById(id)
+  if (!result.success) return res.status(404).json(result)
+
+  res.json(result)
+}))
+
+// ── Public: Download Ticket PDF ───────────────────────────────────────────
+
+router.get('/registrations/:id/ticket/pdf', asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id as string)
+  if (isNaN(id) || id <= 0) return res.status(400).json({ success: false, error: 'Invalid registration ID' })
+
+  const result = await tourController.getRegistrationById(id)
+  if (!result.success || !result.data) return res.status(404).json({ success: false, error: 'Ticket not found' })
+
+  const { tour, registration } = result.data
+  const pdfBuffer = await generateTourTicketPdfBuffer(tour, registration)
+
+  const safeTitle = tour.title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
+  const safeName = registration.fullName.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
+
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `inline; filename="DMZP_Ticket_${safeTitle}_${safeName}.pdf"`)
+  res.send(pdfBuffer)
+}))
 
 export default router

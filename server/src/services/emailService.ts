@@ -257,7 +257,7 @@ function generateMembershipCardHtml(member: MemberCardData): string {
   `.trim()
 }
 
-function createTransporter() {
+export function createTransporter() {
   // Always read fresh from process.env — DO NOT cache at module level
   const host = process.env.SMTP_HOST || 'smtp.gmail.com'
   const port = parseInt(process.env.SMTP_PORT || '587', 10)

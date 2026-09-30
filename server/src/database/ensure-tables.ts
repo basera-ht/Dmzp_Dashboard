@@ -52,6 +52,7 @@ export async function ensureTablesAndTestUser() {
       "price" integer DEFAULT 0 NOT NULL,
       "upi_id" varchar(255),
       "upi_qr_image" varchar(500),
+      "whatsapp_group_url" varchar(500),
       "custom_form_fields" jsonb DEFAULT '[]'::jsonb,
       "status" "tour_status" DEFAULT 'draft' NOT NULL,
       "created_at" timestamp DEFAULT now() NOT NULL,
@@ -72,9 +73,18 @@ export async function ensureTablesAndTestUser() {
       "upi_transaction_id" varchar(100),
       "payment_screenshot_url" varchar(500),
       "payment_status" "payment_status" DEFAULT 'pending_verification' NOT NULL,
+      "ticket_code" varchar(50),
+      "ticket_sent_at" timestamp,
       "created_at" timestamp DEFAULT now() NOT NULL
     );
   `)
+
+  // Safe migrations for existing databases
+  await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "whatsapp_group_url" varchar(500);`)
+  await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_code" varchar(50);`)
+  await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_sent_at" timestamp;`)
+  await db.execute(sql`UPDATE "tour_registrations" SET "ticket_code" = 'DMZP-TOUR-' || LPAD(id::text, 5, '0') WHERE "ticket_code" IS NULL;`)
+
   console.log('✅ Tables "tours" and "tour_registrations" ready.')
 
   // 4. Create or update test credentials securely

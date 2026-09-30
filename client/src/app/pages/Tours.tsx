@@ -3,6 +3,7 @@ import {
   Plus, Search, Calendar, MapPin, Users, Loader2, Edit2, Trash2, X,
   Eye, IndianRupee, ClipboardList, ChevronRight, Check,
   Copy, Upload, GripVertical, Image as ImageIcon, ExternalLink,
+  Ticket, Mail, MessageSquare,
 } from 'lucide-react'
 import { apiClient, API_BASE_URL, getMediaUrl } from '../../lib/api'
 
@@ -30,6 +31,7 @@ export interface Tour {
   price: number
   upiId?: string
   upiQrImage?: string
+  whatsappGroupUrl?: string
   customFormFields?: CustomFormField[]
   status: 'draft' | 'published' | 'archived'
   createdAt: string
@@ -47,6 +49,8 @@ export interface TourRegistration {
   upiTransactionId?: string
   paymentScreenshotUrl?: string
   paymentStatus: 'pending_verification' | 'verified' | 'rejected'
+  ticketCode?: string
+  ticketSentAt?: string
   createdAt: string
 }
 
@@ -245,6 +249,7 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
     editTour?.endDate ? new Date(editTour.endDate).toISOString().split('T')[0] : ''
   )
   const [capacity, setCapacity] = useState(editTour?.capacity || 0)
+  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState(editTour?.whatsappGroupUrl || '')
   const [isPaid, setIsPaid] = useState(editTour?.isPaid || false)
   const [price, setPrice] = useState(editTour?.price || 0)
   const [upiId, setUpiId] = useState(editTour?.upiId || '')
@@ -290,6 +295,7 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
         startDate,
         endDate,
         capacity,
+        whatsappGroupUrl: whatsappGroupUrl.trim() || undefined,
         isPaid,
         price: isPaid ? price : 0,
         upiId: isPaid ? upiId : null,
@@ -487,6 +493,22 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-green-600" /> WhatsApp Group Invite Link (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={whatsappGroupUrl}
+                  onChange={(e) => setWhatsappGroupUrl(e.target.value)}
+                  placeholder="https://chat.whatsapp.com/..."
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Members will automatically receive this WhatsApp group link in their confirmed tour ticket & confirmation email.
+                </p>
+              </div>
             </div>
           )}
 
@@ -650,13 +672,19 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
   }, [load])
 
   const [actionError, setActionError] = useState('')
+  const [ticketNotice, setTicketNotice] = useState('')
+  const [sendingTicketId, setSendingTicketId] = useState<number | null>(null)
 
   const handleAction = async (regId: number, action: 'approve' | 'reject') => {
     setActionLoading(regId)
     setActionError('')
+    setTicketNotice('')
     try {
       const res = await apiClient.patch(`/tours/registrations/${regId}/${action}`)
       if (res.success) {
+        if (action === 'approve') {
+          setTicketNotice('Registration approved and ticket email dispatched to participant!')
+        }
         await load()
       } else {
         setActionError(res.error || `Failed to ${action} registration`)
@@ -665,6 +693,25 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
       setActionError(err.message || `Failed to ${action} registration`)
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const handleSendTicket = async (regId: number) => {
+    setSendingTicketId(regId)
+    setActionError('')
+    setTicketNotice('')
+    try {
+      const res = await apiClient.post<{ messageId?: string }>(`/tours/registrations/${regId}/send-ticket`)
+      if (res.success) {
+        setTicketNotice('Tour ticket email sent successfully!')
+        await load()
+      } else {
+        setActionError(res.error || 'Failed to send ticket email')
+      }
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to send ticket email')
+    } finally {
+      setSendingTicketId(null)
     }
   }
 
@@ -737,6 +784,14 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
               <button onClick={() => setActionError('')} className="text-red-500 hover:text-red-800 font-bold ml-2">×</button>
             </div>
           )}
+          {ticketNotice && (
+            <div className="mx-6 mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center justify-between">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" /> {ticketNotice}
+              </span>
+              <button onClick={() => setTicketNotice('')} className="text-emerald-700 hover:text-emerald-950 font-bold ml-2">×</button>
+            </div>
+          )}
           <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-500">
               Showing {registrations.length} participant(s)
@@ -789,7 +844,12 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                     <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-gray-900">{r.fullName}</div>
-                        <div className="text-xs text-gray-400">{formatDate(r.createdAt)}</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] font-mono bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded font-semibold border border-teal-100">
+                            {r.ticketCode || `TK-${r.id}`}
+                          </span>
+                          <span className="text-xs text-gray-400">{formatDate(r.createdAt)}</span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-600">
                         <div>{r.email}</div>
@@ -833,6 +893,11 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                         >
                           {PAYMENT_LABELS[r.paymentStatus]}
                         </span>
+                        {r.ticketSentAt && (
+                          <div className="text-[10px] text-emerald-600 font-medium mt-1 flex items-center gap-0.5">
+                            <Check className="w-3 h-3" /> Ticket Mailed
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {r.paymentStatus === 'pending_verification' ? (
@@ -850,6 +915,31 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                               className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors"
                             >
                               Reject
+                            </button>
+                          </div>
+                        ) : r.paymentStatus === 'verified' ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <a
+                              href={`/tour/${tour.slug}/ticket/${r.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                              title="View & print attendee's official ticket"
+                            >
+                              <Ticket className="w-3.5 h-3.5" /> Ticket
+                            </a>
+                            <button
+                              onClick={() => handleSendTicket(r.id)}
+                              disabled={sendingTicketId === r.id}
+                              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors disabled:opacity-50"
+                              title={r.ticketSentAt ? `Sent at ${formatDate(r.ticketSentAt)} - Click to resend email` : 'Email ticket & WhatsApp link to member'}
+                            >
+                              {sendingTicketId === r.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Mail className="w-3.5 h-3.5" />
+                              )}
+                              {r.ticketSentAt ? 'Resend' : 'Send'}
                             </button>
                           </div>
                         ) : (

@@ -1,6 +1,7 @@
 import { eq, sql, desc, and } from 'drizzle-orm'
 import { db } from '../database/index.js'
 import { tours, tourRegistrations } from '../models/index.js'
+import { sendTourTicketEmail } from '../services/tourTicketService.js'
 import type { NewTour, NewTourRegistration, Tour, TourRegistration } from '../models/index.js'
 import type { ApiResponse, PaginatedResponse } from '../types/index.js'
 
@@ -105,19 +106,22 @@ export const tourController = {
   },
 
   async createRegistration(data: NewTourRegistration): Promise<ApiResponse<TourRegistration>> {
-    const result = await db.insert(tourRegistrations).values(data).returning()
+    const ticketCode = data.ticketCode || `DMZP-TOUR-${Math.floor(100000 + Math.random() * 900000)}`
+    const result = await db.insert(tourRegistrations).values({ ...data, ticketCode }).returning()
     return { success: true, data: result[0] }
   },
 
   async registerWithCapacityCheck(tourId: number, data: NewTourRegistration): Promise<ApiResponse<TourRegistration>> {
-    return await db.transaction(async (tx) => {
+    const ticketCode = data.ticketCode || `DMZP-TOUR-${Math.floor(100000 + Math.random() * 900000)}`
+
+    const regResult = await db.transaction(async (tx) => {
       // Lock the tour row FOR UPDATE to serialize concurrent registrations
       const lockedTourResult = await tx.execute(
         sql`SELECT id, capacity FROM tours WHERE id = ${tourId} FOR UPDATE`
       )
       const tourRow = (lockedTourResult[0] as unknown) as { id: number; capacity: number } | undefined
       if (!tourRow) {
-        return { success: false, error: 'Tour not found' }
+        return { success: false, error: 'Tour not found' } as const
       }
 
       if (tourRow.capacity && tourRow.capacity > 0) {
@@ -126,19 +130,71 @@ export const tourController = {
         )
         const currentCount = Number((countResult[0] as any)?.count || 0)
         if (currentCount >= tourRow.capacity) {
-          return { success: false, error: 'This tour is fully booked' }
+          return { success: false, error: 'This tour is fully booked' } as const
         }
       }
 
-      const result = await tx.insert(tourRegistrations).values(data).returning()
-      return { success: true, data: result[0] }
+      const result = await tx.insert(tourRegistrations).values({ ...data, ticketCode }).returning()
+      return { success: true, data: result[0] } as const
     })
+
+    // If registration is immediately verified (e.g. free tour), send ticket email
+    if (regResult.success && regResult.data && regResult.data.paymentStatus === 'verified') {
+      const tourData = await this.getById(tourId)
+      if (tourData.success && tourData.data) {
+        sendTourTicketEmail(tourData.data, regResult.data).catch((err) =>
+          console.error('[TourController] Auto ticket email error:', err)
+        )
+      }
+    }
+
+    return regResult
   },
 
   async updatePaymentStatus(id: number, status: 'verified' | 'rejected'): Promise<ApiResponse<TourRegistration>> {
     const result = await db.update(tourRegistrations).set({ paymentStatus: status }).where(eq(tourRegistrations.id, id)).returning()
     if (result.length === 0) return { success: false, error: 'Registration not found' }
-    return { success: true, data: result[0] }
+
+    const updated = result[0]
+    // If approved/verified, trigger ticket email with WhatsApp link & PDF
+    if (status === 'verified') {
+      const tourData = await this.getById(updated.tourId)
+      if (tourData.success && tourData.data) {
+        sendTourTicketEmail(tourData.data, updated).catch((err) =>
+          console.error('[TourController] Approval ticket email error:', err)
+        )
+      }
+    }
+
+    return { success: true, data: updated }
+  },
+
+  async getRegistrationById(id: number): Promise<ApiResponse<{ tour: Tour; registration: TourRegistration }>> {
+    const regResult = await db.select().from(tourRegistrations).where(eq(tourRegistrations.id, id)).limit(1)
+    if (regResult.length === 0) return { success: false, error: 'Registration not found' }
+    const registration = regResult[0]
+
+    const tourResult = await db.select().from(tours).where(eq(tours.id, registration.tourId)).limit(1)
+    if (tourResult.length === 0) return { success: false, error: 'Tour not found' }
+    const tour = tourResult[0]
+
+    return { success: true, data: { tour, registration } }
+  },
+
+  async sendTicket(registrationId: number): Promise<ApiResponse<{ messageId?: string }>> {
+    const regResult = await db.select().from(tourRegistrations).where(eq(tourRegistrations.id, registrationId)).limit(1)
+    if (regResult.length === 0) return { success: false, error: 'Registration not found' }
+    const registration = regResult[0]
+
+    const tourResult = await db.select().from(tours).where(eq(tours.id, registration.tourId)).limit(1)
+    if (tourResult.length === 0) return { success: false, error: 'Tour not found' }
+    const tour = tourResult[0]
+
+    const emailRes = await sendTourTicketEmail(tour, registration)
+    if (!emailRes.success) {
+      return { success: false, error: emailRes.error || 'Failed to send ticket email' }
+    }
+    return { success: true, message: 'Ticket email sent successfully', data: { messageId: emailRes.messageId } }
   },
 
   async getRegistrationStats(tourId: number): Promise<ApiResponse<{ total: number; verified: number; pending: number; rejected: number }>> {

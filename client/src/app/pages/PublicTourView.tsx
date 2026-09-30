@@ -4,7 +4,7 @@ import QRCode from 'react-qr-code'
 import {
   MapPin, Calendar, Users, IndianRupee, Copy, Check,
   AlertCircle, Loader2, Upload, ChevronRight, CheckCircle2,
-  ChevronLeft, ImageIcon, X,
+  ChevronLeft, ImageIcon, X, Ticket, ExternalLink,
 } from 'lucide-react'
 import { API_BASE_URL, getMediaUrl } from '../../lib/api'
 import type { Tour } from './Tours'
@@ -50,6 +50,7 @@ export function PublicTourView() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [completedReg, setCompletedReg] = useState<{ id: number; ticketCode?: string } | null>(null)
 
   useEffect(() => {
     if (!slug) return
@@ -118,7 +119,7 @@ export function PublicTourView() {
         formData.append('paymentScreenshot', screenshot)
       }
 
-      await fetch(`${API_BASE_URL}/public/tours/t/${slug}/register`, {
+      const regData = await fetch(`${API_BASE_URL}/public/tours/t/${slug}/register`, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         body: formData,
@@ -127,6 +128,10 @@ export function PublicTourView() {
         if (!r.ok) throw new Error(data.error || 'Registration failed')
         return data
       })
+
+      if (regData?.data) {
+        setCompletedReg(regData.data)
+      }
 
       setStep(tour.isPaid ? 2 : 1)
     } catch (e: any) {
@@ -164,28 +169,77 @@ export function PublicTourView() {
   const isSuccessStep = (tour.isPaid && step === 2) || (!tour.isPaid && step === 1)
 
   if (isSuccessStep) {
+    const isFree = !tour.isPaid
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-emerald-50 p-4">
-        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-md w-full text-center">
+        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-lg w-full text-center border border-gray-100">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Submitted!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {isFree ? 'Registration Confirmed! 🎉' : 'Registration Submitted!'}
+          </h2>
           <p className="text-gray-500 text-sm leading-relaxed">
-            {tour.isPaid
-              ? 'Thank you for registering! Your payment screenshot has been uploaded. The admin will verify your payment and confirm your spot.'
-              : 'You have been successfully registered for the tour!'}
+            {isFree
+              ? 'You are successfully registered for the tour! Your official ticket has been issued and sent to your email.'
+              : 'Thank you for registering! Your payment screenshot has been uploaded. Once verified by our team, your tour ticket and WhatsApp community invite will be emailed to you.'}
           </p>
+
+          {/* Ticket Reference Badge */}
+          {completedReg?.ticketCode && (
+            <div className="inline-block mt-3 px-3 py-1 bg-teal-50 border border-teal-200 rounded-full text-xs font-mono font-bold text-teal-800">
+              Ticket Code: {completedReg.ticketCode}
+            </div>
+          )}
+
+          {/* WhatsApp Group Callout (Immediate for Free Tours) */}
+          {isFree && tour.whatsappGroupUrl && (
+            <div className="mt-5 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">
+                Official Tour Community
+              </div>
+              <p className="text-xs text-emerald-700 mb-3">
+                Join the WhatsApp group for live departure updates, itinerary, and travel coordination:
+              </p>
+              <a
+                href={tour.whatsappGroupUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-transform hover:scale-[1.02]"
+              >
+                Join Tour WhatsApp Group <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3">
+            {completedReg?.id && (
+              <Link
+                to={`/tour/${tour.slug}/ticket/${completedReg.id}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors"
+              >
+                <Ticket className="w-3.5 h-3.5" /> View Tour Ticket Pass
+              </Link>
+            )}
+            <Link
+              to="/"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
+            >
+              Return Home
+            </Link>
+          </div>
+
           <div className="mt-6 p-4 bg-gray-50 rounded-xl text-left text-sm space-y-1.5 border border-gray-100">
-            <div className="text-gray-500 text-xs">TOUR</div>
+            <div className="text-gray-500 text-xs font-bold uppercase tracking-wider">Registration Details</div>
             <div className="text-gray-900 font-semibold mb-2">{tour.title}</div>
-            <div className="text-gray-600">Participant: <span className="text-gray-900 font-medium">{fullName}</span></div>
-            <div className="text-gray-600">Email: <span className="text-gray-900 font-medium">{email}</span></div>
-            <div className="text-gray-600">Phone: <span className="text-gray-900 font-medium">{phone}</span></div>
+            <div className="text-gray-600 text-xs">Participant: <span className="text-gray-900 font-medium">{fullName}</span></div>
+            <div className="text-gray-600 text-xs">Email: <span className="text-gray-900 font-medium">{email}</span></div>
+            <div className="text-gray-600 text-xs">Phone: <span className="text-gray-900 font-medium">{phone}</span></div>
             {tour.isPaid && (
-              <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-                <span className="text-gray-600">Payment Status:</span>
-                <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
+              <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between text-xs">
+                <span className="text-gray-600">Verification Status:</span>
+                <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-semibold">
                   Pending Verification
                 </span>
               </div>
