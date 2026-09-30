@@ -16,9 +16,12 @@ const router = Router()
 async function handleMedia(req: Request, res: Response, isProtected: boolean) {
   try {
     const rawKey = req.path.startsWith('/') ? req.path.slice(1) : req.path
-    // sanitize key: prevent path traversal
-    const safeKey = path.normalize(rawKey).replace(/^(\.\.[\/\\])+/, '')
-    const localPath = path.join(uploadsDir, safeKey)
+    const localPath = path.resolve(uploadsDir, rawKey)
+    const rel = path.relative(uploadsDir, localPath)
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      return res.status(403).json({ success: false, error: 'Invalid path' })
+    }
+    const safeKey = rel.replace(/\\/g, '/')
 
     const cacheHeader = isProtected ? 'private, no-store' : 'public, max-age=86400'
 

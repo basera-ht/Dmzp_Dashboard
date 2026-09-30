@@ -273,7 +273,7 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
 
   const canNext = () => {
     if (step === 0) return Boolean(title.trim() && location.trim())
-    if (step === 1) return Boolean(startDate && endDate)
+    if (step === 1) return Boolean(startDate && endDate && endDate >= startDate)
     if (step === 2 && isPaid) return price > 0 && Boolean(upiId.trim())
     return true
   }
@@ -649,23 +649,31 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
     load()
   }, [load])
 
+  const [actionError, setActionError] = useState('')
+
   const handleAction = async (regId: number, action: 'approve' | 'reject') => {
     setActionLoading(regId)
+    setActionError('')
     try {
-      const res = await fetch(`${API_BASE_URL}/tours/registrations/${regId}/${action}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
-      if (!res.ok) throw new Error('Action failed')
-      await load()
-    } catch {
-      /* ignore */
+      const res = await apiClient.patch(`/tours/registrations/${regId}/${action}`)
+      if (res.success) {
+        await load()
+      } else {
+        setActionError(res.error || `Failed to ${action} registration`)
+      }
+    } catch (err: any) {
+      setActionError(err.message || `Failed to ${action} registration`)
+    } finally {
+      setActionLoading(null)
     }
-    setActionLoading(null)
+  }
+
+  const sanitizeCSVCell = (val: unknown) => {
+    let str = String(val ?? '')
+    if (/^[=\+\-@\t\r]/.test(str)) {
+      str = `'${str}`
+    }
+    return `"${str.replace(/"/g, '""')}"`
   }
 
   const exportCSV = () => {
@@ -680,7 +688,7 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
       formatDate(r.createdAt),
     ])
     const csv = [headers, ...rows]
-      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .map((r) => r.map(sanitizeCSVCell).join(','))
       .join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -723,6 +731,12 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
           </div>
 
           {/* Toolbar */}
+          {actionError && (
+            <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between">
+              <span>{actionError}</span>
+              <button onClick={() => setActionError('')} className="text-red-500 hover:text-red-800 font-bold ml-2">×</button>
+            </div>
+          )}
           <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-500">
               Showing {registrations.length} participant(s)

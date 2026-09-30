@@ -17,7 +17,12 @@ function registrationRateLimiter(req: Request, res: Response, next: NextFunction
   const ip = req.ip || req.socket.remoteAddress || 'unknown'
   const now = Date.now()
 
-  if (!regRateLimitStore[ip] || now > regRateLimitStore[ip].resetTime) {
+  const entry = regRateLimitStore[ip]
+  if (entry && now > entry.resetTime) {
+    delete regRateLimitStore[ip]
+  }
+
+  if (!regRateLimitStore[ip]) {
     regRateLimitStore[ip] = { count: 1, resetTime: now + REG_WINDOW_MS }
     return next()
   }
@@ -31,6 +36,19 @@ function registrationRateLimiter(req: Request, res: Response, next: NextFunction
     })
   }
   next()
+}
+
+// Periodic cleanup of expired rate limit entries
+const regCleanupTimer = setInterval(() => {
+  const now = Date.now()
+  for (const ip in regRateLimitStore) {
+    if (now > regRateLimitStore[ip].resetTime) {
+      delete regRateLimitStore[ip]
+    }
+  }
+}, REG_WINDOW_MS)
+if (regCleanupTimer.unref) {
+  regCleanupTimer.unref()
 }
 
 const registrationSchema = z.object({

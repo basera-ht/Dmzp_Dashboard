@@ -108,9 +108,10 @@ if (process.argv[1]?.includes('ensure-tables')) {
   ensureTablesAndTestUser()
     .then(() => {
       console.log('\n--- Test Account Ready ---')
-      console.log(`Email:   ${TEST_CREDENTIALS.email}`)
-      console.log(`Role:    ${TEST_CREDENTIALS.role}`)
-      console.log(`Marking: ${TEST_CREDENTIALS.name}`)
+      console.log(`Email:    ${TEST_CREDENTIALS.email}`)
+      console.log(`Password: ${TEST_CREDENTIALS.password}`)
+      console.log(`Role:     ${TEST_CREDENTIALS.role}`)
+      console.log(`Marking:  ${TEST_CREDENTIALS.name}`)
       console.log('---------------------------\n')
       process.exit(0)
     })

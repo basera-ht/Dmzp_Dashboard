@@ -86,8 +86,10 @@ export function PublicTourView() {
     }
   }
 
+  const isEmailValid = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
+
   const canSubmitStep0 = () => {
-    if (!fullName.trim() || !email.trim() || !phone.trim()) return false
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !isEmailValid(email)) return false
     const requiredFields = tour?.customFormFields?.filter((f) => f.required) || []
     return requiredFields.every((f) => customResponses[f.id]?.trim())
   }
@@ -280,13 +282,20 @@ export function PublicTourView() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Email Address *</label>
+                  {email.trim() && !isEmailValid(email) && (
+                    <span className="text-xs text-red-500 font-medium">Invalid email address</span>
+                  )}
+                </div>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your.email@example.com"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    email.trim() && !isEmailValid(email) ? 'border-red-300 bg-red-50/20' : 'border-gray-200'
+                  }`}
                 />
               </div>
               <div>
@@ -436,12 +445,12 @@ export function PublicTourView() {
                       <p className="text-xs text-gray-500">
                         {screenshot ? `${(screenshot.size / 1024).toFixed(1)} KB` : ''}
                       </p>
-                      <label className="inline-block mt-1 text-xs text-teal-700 hover:text-teal-800 font-semibold cursor-pointer underline">
+                      <label className="inline-block mt-1 text-xs text-teal-700 hover:text-teal-800 font-semibold cursor-pointer underline rounded focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
                         Change image
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp,image/gif"
-                          className="hidden"
+                          className="sr-only"
                           onChange={(e) => handleScreenshotChange(e.target.files?.[0] || null)}
                         />
                       </label>
@@ -456,7 +465,7 @@ export function PublicTourView() {
                     </button>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/20 hover:bg-teal-50/40 rounded-2xl cursor-pointer transition-colors text-center">
+                  <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/20 hover:bg-teal-50/40 rounded-2xl cursor-pointer transition-colors text-center focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
                     <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
                       <Upload className="w-6 h-6" />
                     </div>
@@ -469,7 +478,7 @@ export function PublicTourView() {
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="hidden"
+                      className="sr-only"
                       onChange={(e) => handleScreenshotChange(e.target.files?.[0] || null)}
                     />
                   </label>

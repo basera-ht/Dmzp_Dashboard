@@ -13,14 +13,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
 
+const isDev = config.nodeEnv !== 'production'
+const devOrigin = isDev && typeof config.cors.origin === 'string' && config.cors.origin.startsWith('http://')
+  ? config.cors.origin
+  : isDev
+  ? 'http://localhost:5173'
+  : null
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:', 'http:'],
-      connectSrc: ["'self'", 'https:', 'http:'],
+      imgSrc: ["'self'", 'data:', 'https:', ...(devOrigin ? [devOrigin] : [])],
+      connectSrc: ["'self'", 'https:', ...(devOrigin ? [devOrigin] : [])],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],

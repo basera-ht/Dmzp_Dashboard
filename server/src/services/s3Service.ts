@@ -80,8 +80,12 @@ export async function uploadFileToS3(
         await upload.done()
         s3Success = true
       } catch (s3Err) {
-        console.warn('S3 upload warning (local copy checked):', s3Err)
+        console.error('S3 upload failed while AWS credentials configured:', s3Err)
       }
+    }
+
+    if (hasAwsCredentials && !s3Success) {
+      return { success: false, error: 'Failed to upload file to S3' }
     }
 
     if (!localRes.success && !s3Success) {
@@ -122,9 +126,11 @@ export async function deleteFileFromS3(key: string): Promise<boolean> {
       await s3Client.send(command)
     }
     // Also delete locally if present
-    const localPath = path.join(localUploadsDir, key)
-    if (fs.existsSync(localPath)) {
-      await fs.promises.unlink(localPath)
+    const localPath = path.resolve(localUploadsDir, key)
+    if (localPath.startsWith(localUploadsDir + path.sep)) {
+      if (fs.existsSync(localPath)) {
+        await fs.promises.unlink(localPath)
+      }
     }
     return true
   } catch (error) {

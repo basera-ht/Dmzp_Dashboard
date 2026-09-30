@@ -90,8 +90,37 @@ class ApiClient {
         }
       }
 
-      const data = await response.json()
-      return data
+      if (!response.ok) {
+        const text = await response.text()
+        let errorMsg = `Request failed with status ${response.status}`
+        if (text) {
+          try {
+            const errData = JSON.parse(text)
+            if (errData.error) errorMsg = errData.error
+            else if (errData.message) errorMsg = errData.message
+          } catch {
+            errorMsg = text
+          }
+        }
+        return {
+          success: false,
+          error: errorMsg,
+        }
+      }
+
+      const text = await response.text()
+      if (!text) {
+        return { success: true } as ApiResponse<T>
+      }
+      try {
+        const data = JSON.parse(text)
+        return data
+      } catch {
+        return {
+          success: false,
+          error: 'Failed to parse response JSON',
+        }
+      }
     } catch (error: any) {
       if (error.name === 'AbortError') {
         return {
@@ -162,7 +191,18 @@ class ApiClient {
         body: formData,
       })
 
-      const data = await response.json()
+      const text = await response.text()
+      let data: any = {}
+      if (text) {
+        try {
+          data = JSON.parse(text)
+        } catch {
+          data = { error: text }
+        }
+      }
+      if (!response.ok) {
+        return { success: false, error: data.error || `Upload failed with status ${response.status}` }
+      }
       return data
     } catch (error: any) {
       return { success: false, error: error.message || 'Upload failed' }
@@ -183,7 +223,18 @@ class ApiClient {
         body: formData,
       })
 
-      const data = await response.json()
+      const text = await response.text()
+      let data: any = {}
+      if (text) {
+        try {
+          data = JSON.parse(text)
+        } catch {
+          data = { error: text }
+        }
+      }
+      if (!response.ok) {
+        return { success: false, error: data.error || `Upload failed with status ${response.status}` }
+      }
       return data
     } catch (error: any) {
       return { success: false, error: error.message || 'Upload failed' }
