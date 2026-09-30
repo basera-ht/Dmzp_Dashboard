@@ -1,5 +1,36 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
+export function getMediaUrl(url?: string | null): string {
+  if (!url) return ''
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return url
+  }
+  const backendOrigin = API_BASE_URL.replace(/\/api\/?$/, '')
+
+  // Route private S3 URLs through our public media streaming proxy to bypass 403 blocks
+  if (url.includes('.amazonaws.com/')) {
+    const parts = url.split('.amazonaws.com/')
+    const s3Key = parts[1]
+    if (s3Key) {
+      return `${backendOrigin}/api/media/${s3Key}`
+    }
+  }
+
+  if (url.startsWith('/api/')) {
+    return `${backendOrigin}${url}`
+  }
+
+  if (url.startsWith('/uploads/')) {
+    return `${backendOrigin}${url}`
+  }
+
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+
+  return `${backendOrigin}/api/media/${url.replace(/^\/+/, '')}`
+}
+
 interface ApiError {
   message: string
   code?: string
@@ -20,7 +51,8 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry = false
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
     
@@ -43,29 +75,47 @@ class ApiClient {
 
       clearTimeout(timeoutId)
 
-      const text = await response.text()
-      let data
-      try {
-        data = JSON.parse(text)
-      } catch {
-        data = { success: false, error: text }
-      }
-
-      if (!response.ok) {
-        const error: ApiError = {
-          message: data.error || data.message || 'An error occurred',
-          code: data.code,
+      // Handle 401 Unauthorized
+      if (response.status === 401) {
+        if (!isRetry) {
+          // Try refresh token once if available, otherwise proceed to unauthorized handling
+          const refreshed = await this.refreshToken()
+          if (refreshed) {
+            return this.request<T>(endpoint, options, true)
+          }
         }
-        
-        throw error
+        return {
+          success: false,
+          error: 'Session expired. Please log in again.',
+        }
       }
 
+      const data = await response.json()
       return data
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        throw { message: 'Request timed out. Please try again.' }
+        return {
+          success: false,
+          error: 'Request timeout. Please check your connection.',
+        }
       }
-      throw error
+      return {
+        success: false,
+        error: error.message || 'An unexpected error occurred',
+      }
+    }
+  }
+
+  private async refreshToken(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      return response.ok
+    } catch {
+      return false
     }
   }
 
@@ -73,17 +123,24 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'GET' })
   }
 
-  async post<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+      body: data ? JSON.stringify(data) : undefined,
     })
   }
 
-  async put<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
+      body: data ? JSON.stringify(data) : undefined,
+    })
+  }
+
+  async patch<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
     })
   }
 
@@ -94,7 +151,9 @@ class ApiClient {
   async postForm<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
 
-    const headers: Record<string, string> = {}
+    const headers: Record<string, string> = {
+      'X-Requested-With': 'XMLHttpRequest',
+    }
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -113,7 +172,9 @@ class ApiClient {
   async putForm<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
 
-    const headers: Record<string, string> = {}
+    const headers: Record<string, string> = {
+      'X-Requested-With': 'XMLHttpRequest',
+    }
     try {
       const response = await fetch(url, {
         method: 'PUT',

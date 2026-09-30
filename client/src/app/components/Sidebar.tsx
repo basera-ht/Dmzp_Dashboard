@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, Settings, User, CalendarDays, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, User, CalendarDays, LogOut, Map } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Drawer, DrawerContent } from './ui/drawer';
@@ -7,6 +7,7 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard',    path: '/'          },
   { icon: Users,           label: 'All Profiles', path: '/profiles'  },
   { icon: CalendarDays,    label: 'Events',       path: '/events'    },
+  { icon: Map,             label: 'Tours',        path: '/tours'     },
   { icon: FileText,        label: 'Reports',      path: '/reports'   },
   { icon: Settings,        label: 'Settings',     path: '/settings'  },
 ];

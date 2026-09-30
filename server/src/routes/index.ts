@@ -9,6 +9,9 @@ import authRoutes from './authRoutes.js'
 import formDataRoutes from './formDataRoutes.js'
 import memberCardRoutes from './memberCardRoutes.js'
 import automationRoutes from './automationRoutes.js'
+import tourRoutes from './tourRoutes.js'
+import publicTourRoutes from './publicTourRoutes.js'
+import mediaRoutes from './mediaRoutes.js'
 import { authMiddleware, requireAdmin } from '../middleware/auth.js'
 
 const router = Router()
@@ -24,6 +27,11 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRoutes)
 // Vercel cron uses its own bearer secret; every interactive API below uses a session.
 router.use('/automation', automationRoutes)
+// Public tour pages — no auth required
+router.use('/public/tours', publicTourRoutes)
+// Public media stream — serves images, receipts, and place photos directly
+router.use('/media', mediaRoutes)
+
 router.use(authMiddleware)
 router.use('/chapters', requireAdmin, chapterRoutes)
 router.use('/members', requireAdmin, memberRoutes)
@@ -33,5 +41,6 @@ router.use('/users', userRoutes)
 router.use('/dashboard', requireAdmin, dashboardRoutes)
 router.use('/form-data', requireAdmin, formDataRoutes)
 router.use('/member-card', requireAdmin, memberCardRoutes)
+router.use('/tours', requireAdmin, tourRoutes)
 
 export default router

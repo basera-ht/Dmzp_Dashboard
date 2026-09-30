@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, varchar, timestamp, integer, pgEnum, boolean, jsonb } from 'drizzle-orm/pg-core'
 
 export const memberStatusEnum = pgEnum('member_status', ['Active', 'Pending', 'Inactive'])
 export const memberTypeEnum = pgEnum('member_type', ['Student', 'Professional', 'Organization'])
@@ -136,3 +136,55 @@ export type NewUser = typeof users.$inferInsert
 export type Setting = typeof settings.$inferSelect
 export type NewSetting = typeof settings.$inferInsert
 export type AuthSession = typeof authSessions.$inferSelect
+
+// ── Tour Management ─────────────────────────────────────────────────────────
+
+export const tourStatusEnum = pgEnum('tour_status', ['draft', 'published', 'archived'])
+export const paymentStatusEnum = pgEnum('payment_status', ['pending_verification', 'verified', 'rejected'])
+
+export const tours = pgTable('tours', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 300 }).notNull().unique(),
+  description: text('description'),
+  coverImage: varchar('cover_image', { length: 500 }),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  location: varchar('location', { length: 255 }).notNull(),
+  capacity: integer('capacity').default(0),
+  isPaid: boolean('is_paid').default(false).notNull(),
+  price: integer('price').default(0).notNull(),
+  upiId: varchar('upi_id', { length: 255 }),
+  upiQrImage: varchar('upi_qr_image', { length: 500 }),
+  customFormFields: jsonb('custom_form_fields').$type<CustomFormField[]>().default([]),
+  status: tourStatusEnum('status').default('draft').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const tourRegistrations = pgTable('tour_registrations', {
+  id: serial('id').primaryKey(),
+  tourId: integer('tour_id').references(() => tours.id, { onDelete: 'cascade' }).notNull(),
+  fullName: varchar('full_name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  phoneNumber: varchar('phone_number', { length: 50 }).notNull(),
+  customResponses: jsonb('custom_responses').$type<Record<string, string>>().default({}),
+  amountPaid: integer('amount_paid').default(0).notNull(),
+  upiTransactionId: varchar('upi_transaction_id', { length: 100 }),
+  paymentScreenshotUrl: varchar('payment_screenshot_url', { length: 500 }),
+  paymentStatus: paymentStatusEnum('payment_status').default('pending_verification').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export interface CustomFormField {
+  id: string
+  label: string
+  type: 'text' | 'select' | 'textarea'
+  required: boolean
+  options?: string[]
+}
+
+export type Tour = typeof tours.$inferSelect
+export type NewTour = typeof tours.$inferInsert
+export type TourRegistration = typeof tourRegistrations.$inferSelect
+export type NewTourRegistration = typeof tourRegistrations.$inferInsert

@@ -14,6 +14,8 @@
     "db:seed": "tsx src/database/seed.ts",
     "db:sync": "tsx src/database/syncSheetsToDb.ts",
     "db:setup": "drizzle-kit push && tsx src/database/seed.ts",
+    "db:test-setup": "tsx src/database/ensure-tables.ts",
+    "db:test-cleanup": "tsx src/database/cleanup-test.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -33,8 +35,6 @@
     "papaparse": "^5.5.3",
     "pdfkit": "^0.18.0",
     "postgres": "^3.4.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -44,8 +44,6 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^22.10.5",
     "@types/pdfkit": "^0.17.5",
-    "@types/react": "18.3.1",
-    "@types/react-dom": "18.3.1",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
