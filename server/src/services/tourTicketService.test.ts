@@ -17,6 +17,8 @@ describe('Tour Ticket Service', () => {
     price: 3500,
     upiId: 'dmzp@okhdfcbank',
     upiQrImage: null,
+    upiId2: null,
+    upiQrImage2: null,
     whatsappGroupUrl: 'https://chat.whatsapp.com/TestGroup123',
     customFormFields: [],
     status: 'published',

@@ -81,6 +81,8 @@ export async function ensureTablesAndTestUser() {
 
   // Safe migrations for existing databases
   await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "whatsapp_group_url" varchar(500);`)
+  await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "upi_id_2" varchar(255);`)
+  await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "upi_qr_image_2" varchar(500);`)
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_code" varchar(50);`)
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_sent_at" timestamp;`)
   await db.execute(sql`UPDATE "tour_registrations" SET "ticket_code" = 'DMZP-TOUR-' || LPAD(id::text, 5, '0') WHERE "ticket_code" IS NULL;`)

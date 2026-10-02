@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit'
 import nodemailer from 'nodemailer'
+import QRCode from 'qrcode'
 import { config } from '../config/index.js'
 import { createTransporter } from './emailService.js'
 import { db } from '../database/index.js'
@@ -20,7 +21,25 @@ function formatDate(dateVal: string | Date | undefined): string {
 
 // ── 1. PDF Ticket Generation ──────────────────────────────────────────────────
 
-export function generateTourTicketPdfBuffer(tour: Tour, registration: TourRegistration): Promise<Buffer> {
+export async function generateTourTicketPdfBuffer(tour: Tour, registration: TourRegistration): Promise<Buffer> {
+  const ticketCode = registration.ticketCode || `DMZP-TOUR-${registration.id.toString().padStart(5, '0')}`
+
+  // Resolve QR code URL pointing to the ticket verification page
+  const frontendOrigin = (
+    config.appUrl ||
+    (config.cors.origin && config.cors.origin !== '*' ? config.cors.origin : 'https://dmzp-dashboard-client.vercel.app')
+  ).replace(/\/+$/, '')
+  const ticketWebUrl = `${frontendOrigin}/tour/${tour.slug}/ticket/${registration.id}`
+
+  // Generate QR code as a PNG buffer for embedding in the PDF
+  const qrPngBuffer = await QRCode.toBuffer(ticketWebUrl, {
+    type: 'png',
+    width: 120,
+    margin: 1,
+    errorCorrectionLevel: 'M',
+    color: { dark: '#0f172a', light: '#ffffff' },
+  })
+
   return new Promise<Buffer>((resolve, reject) => {
     // A5 Landscape: 595.28 x 420 pts
     const doc = new PDFDocument({ size: 'A5', layout: 'landscape', margin: 0 })
@@ -149,21 +168,19 @@ export function generateTourTicketPdfBuffer(tour: Tour, registration: TourRegist
     doc.fillColor('#0f172a').font('Helvetica').fontSize(9)
     doc.text(formatDate(tour.startDate), stubX, 186)
 
-    doc.fillColor('#64748b').font('Helvetica-Bold').fontSize(8)
-    doc.text('PASSENGER', stubX, 210)
-    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(9)
-    doc.text(registration.fullName, stubX, 222, { width: 155, ellipsis: true })
+    // QR Code for boarding verification (embedded as image)
+    const qrX = stubX + 18
+    const qrY = 210
+    const qrSize = 100
+    doc.roundedRect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 10, 6).fillAndStroke('#ffffff', '#e2e8f0')
+    doc.image(qrPngBuffer, qrX, qrY, { width: qrSize, height: qrSize })
 
-    // Stub guidelines
-    doc.roundedRect(stubX, 248, 155, 78, 6).fillAndStroke('#f8fafc', '#e2e8f0')
-    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(7.5)
-    doc.text('TOUR CHECK-IN RULES', stubX + 8, 256)
-    doc.fillColor('#64748b').font('Helvetica').fontSize(6.5).lineGap(2)
-    doc.text('• Show this e-ticket at boarding\n• Carry valid original Photo ID\n• Arrive 30 mins before departure\n• Follow tour leads & guidelines', stubX + 8, 270)
+    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(6.5)
+    doc.text('SCAN TO VERIFY AT BOARDING', stubX, qrY + qrSize + 12, { align: 'center', width: 155 })
 
     // Security watermark
     doc.fillColor('#cbd5e1').font('Helvetica-Bold').fontSize(7)
-    doc.text('AUTHENTIC DMZP PASS', stubX, 335, { align: 'center', width: 155 })
+    doc.text('AUTHENTIC DMZP PASS', stubX, 340, { align: 'center', width: 155 })
 
     doc.end()
   })

@@ -31,6 +31,8 @@ export interface Tour {
   price: number
   upiId?: string
   upiQrImage?: string
+  upiId2?: string
+  upiQrImage2?: string
   whatsappGroupUrl?: string
   customFormFields?: CustomFormField[]
   status: 'draft' | 'published' | 'archived'
@@ -253,6 +255,7 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
   const [isPaid, setIsPaid] = useState(editTour?.isPaid || false)
   const [price, setPrice] = useState(editTour?.price || 0)
   const [upiId, setUpiId] = useState(editTour?.upiId || '')
+  const [upiId2, setUpiId2] = useState(editTour?.upiId2 || '')
   const [customFields, setCustomFields] = useState<CustomFormField[]>(
     editTour?.customFormFields || []
   )
@@ -299,6 +302,7 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
         isPaid,
         price: isPaid ? price : 0,
         upiId: isPaid ? upiId : null,
+        upiId2: isPaid && upiId2.trim() ? upiId2 : null,
         customFormFields: customFields.filter((f) => f.label.trim()),
         status: saveStatus,
       }
@@ -568,6 +572,22 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       A scan-to-pay QR code will be generated automatically for participants.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Secondary UPI ID <span className="text-xs text-gray-400 font-normal">(Optional — Backup)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={upiId2}
+                      onChange={(e) => setUpiId2(e.target.value)}
+                      placeholder="e.g. dmzp-backup@oksbi"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Add a backup UPI ID if the primary account hits transaction limits. Both will be shown to participants.
                     </p>
                   </div>
                 </div>

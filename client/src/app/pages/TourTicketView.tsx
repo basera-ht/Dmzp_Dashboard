@@ -26,6 +26,7 @@ export function TourTicketView() {
   const [data, setData] = useState<{ tour: Tour; registration: TourRegistration } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [errorCode, setErrorCode] = useState('')
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function TourTicketView() {
     })
       .then(async (r) => {
         const json = await r.json()
-        if (!r.ok) throw new Error(json.error || 'Failed to load ticket')
+        if (!r.ok) throw { message: json.error || 'Failed to load ticket', code: json.code || '' }
         return json
       })
       .then((res) => {
@@ -46,8 +47,9 @@ export function TourTicketView() {
           setError(res.error || 'Ticket not found')
         }
       })
-      .catch((err) => {
+      .catch((err: any) => {
         setError(err.message || 'Failed to load ticket')
+        setErrorCode(err.code || '')
       })
       .finally(() => setLoading(false))
   }, [regId])
@@ -74,14 +76,29 @@ export function TourTicketView() {
   }
 
   if (error || !data) {
+    const isPending = errorCode === 'TICKET_NOT_APPROVED'
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center border border-gray-100">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Ticket Not Found</h2>
-          <p className="text-sm text-gray-500 mb-6">
-            {error || 'The requested ticket could not be found. Please check your link or contact the tour organizer.'}
-          </p>
+          {isPending ? (
+            <>
+              <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Loader2 className="w-7 h-7 text-amber-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Ticket Pending Approval</h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Your registration is under review. Once the admin verifies your payment, your ticket and WhatsApp community invite will be emailed to you.
+              </p>
+            </>
+          ) : (
+            <>
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Ticket Not Found</h2>
+              <p className="text-sm text-gray-500 mb-6">
+                {error || 'The requested ticket could not be found. Please check your link or contact the tour organizer.'}
+              </p>
+            </>
+          )}
           <Link
             to={slug ? `/tour/${slug}` : '/'}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-600 hover:text-teal-700"

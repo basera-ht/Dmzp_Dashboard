@@ -172,6 +172,15 @@ router.get('/registrations/:id/ticket', asyncHandler(async (req, res) => {
   const result = await tourController.getRegistrationById(id)
   if (!result.success) return res.status(404).json(result)
 
+  // Only allow ticket access for verified (approved) registrations
+  if (result.data!.registration.paymentStatus !== 'verified') {
+    return res.status(403).json({
+      success: false,
+      error: 'Ticket is not available yet. Your registration is pending verification by the admin.',
+      code: 'TICKET_NOT_APPROVED',
+    })
+  }
+
   res.json(result)
 }))
 
@@ -183,6 +192,15 @@ router.get('/registrations/:id/ticket/pdf', asyncHandler(async (req, res) => {
 
   const result = await tourController.getRegistrationById(id)
   if (!result.success || !result.data) return res.status(404).json({ success: false, error: 'Ticket not found' })
+
+  // Only allow PDF download for verified (approved) registrations
+  if (result.data.registration.paymentStatus !== 'verified') {
+    return res.status(403).json({
+      success: false,
+      error: 'Ticket PDF is not available until your registration is approved.',
+      code: 'TICKET_NOT_APPROVED',
+    })
+  }
 
   const { tour, registration } = result.data
   const pdfBuffer = await generateTourTicketPdfBuffer(tour, registration)
