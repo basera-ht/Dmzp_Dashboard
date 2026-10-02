@@ -31,7 +31,7 @@ export function getMediaUrl(url?: string | null): string {
   return `${backendOrigin}/api/media/${url.replace(/^\/+/, '')}`
 }
 
-interface ApiError {
+export interface ApiError {
   message: string
   code?: string
 }

@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Plus, Search, Calendar, MapPin, Users, Loader2, Edit2, Trash2, X,
-  Eye, IndianRupee, ClipboardList, ChevronRight, Check,
-  Copy, Upload, GripVertical, Image as ImageIcon, ExternalLink,
+  Plus, Search, Calendar, MapPin, Loader2, Edit2, Trash2, X,
+  Eye, ClipboardList, ChevronRight, Check,
+  Copy, GripVertical, Image as ImageIcon, ExternalLink,
   Ticket, Mail, MessageSquare,
 } from 'lucide-react'
-import { apiClient, API_BASE_URL, getMediaUrl } from '../../lib/api'
+import { apiClient, getMediaUrl } from '../../lib/api'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -939,15 +939,17 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                           </div>
                         ) : r.paymentStatus === 'verified' ? (
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <a
-                              href={`/tour/${tour.slug}/ticket/${r.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors"
-                              title="View & print attendee's official ticket"
-                            >
-                              <Ticket className="w-3.5 h-3.5" /> Ticket
-                            </a>
+                            {r.ticketCode ? (
+                              <a
+                                href={`/tour/${tour.slug}/ticket/${encodeURIComponent(r.ticketCode)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                                title="View & print attendee's official ticket"
+                              >
+                                <Ticket className="w-3.5 h-3.5" /> Ticket
+                              </a>
+                            ) : null}
                             <button
                               onClick={() => handleSendTicket(r.id)}
                               disabled={sendingTicketId === r.id}

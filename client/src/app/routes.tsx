@@ -112,11 +112,11 @@ export const router = createBrowserRouter([
     Component: SuspendedPublicTour,
   },
   {
-    path: '/tour/:slug/ticket/:regId',
+    path: '/tour/:slug/ticket/:ticketCode',
     Component: SuspendedTourTicket,
   },
   {
-    path: '/tours/ticket/:regId',
+    path: '/tours/ticket/:ticketCode',
     Component: SuspendedTourTicket,
   },
   {

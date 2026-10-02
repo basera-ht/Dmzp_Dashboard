@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import {
   Calendar, MapPin, CheckCircle2, Download, Printer,
-  ArrowLeft, Users, ShieldCheck, ExternalLink, Loader2,
-  AlertCircle, Ticket, Share2
+  ArrowLeft, ShieldCheck, ExternalLink, Loader2,
+  AlertCircle, Share2
 } from 'lucide-react'
 import QRCode from 'react-qr-code'
-import { API_BASE_URL, getMediaUrl } from '../../lib/api'
+import { API_BASE_URL } from '../../lib/api'
 import type { Tour, TourRegistration } from './Tours'
 
 function formatDate(dateVal: string | Date | undefined): string {
@@ -22,7 +22,7 @@ function formatDate(dateVal: string | Date | undefined): string {
 }
 
 export function TourTicketView() {
-  const { slug, regId } = useParams<{ slug?: string; regId?: string }>()
+  const { slug, ticketCode: ticketCodeParam } = useParams<{ slug?: string; ticketCode?: string }>()
   const [data, setData] = useState<{ tour: Tour; registration: TourRegistration } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -30,9 +30,9 @@ export function TourTicketView() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (!regId) return
+    if (!ticketCodeParam) return
     setLoading(true)
-    fetch(`${API_BASE_URL}/public/tours/registrations/${regId}/ticket`, {
+    fetch(`${API_BASE_URL}/public/tours/registrations/t/${encodeURIComponent(ticketCodeParam)}/ticket`, {
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
     })
       .then(async (r) => {
@@ -52,7 +52,7 @@ export function TourTicketView() {
         setErrorCode(err.code || '')
       })
       .finally(() => setLoading(false))
-  }, [regId])
+  }, [ticketCodeParam])
 
   const handlePrint = () => {
     window.print()
@@ -112,7 +112,7 @@ export function TourTicketView() {
 
   const { tour, registration } = data
   const ticketCode = registration.ticketCode || `DMZP-TOUR-${registration.id.toString().padStart(5, '0')}`
-  const pdfDownloadUrl = `${API_BASE_URL}/public/tours/registrations/${registration.id}/ticket/pdf`
+  const pdfDownloadUrl = `${API_BASE_URL}/public/tours/registrations/t/${encodeURIComponent(ticketCode)}/ticket/pdf`
 
   return (
     <div className="min-h-screen bg-slate-900/5 py-8 px-4 sm:px-6">

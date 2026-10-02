@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import PDFDocument from 'pdfkit'
 import nodemailer from 'nodemailer'
 import QRCode from 'qrcode'
@@ -19,17 +20,61 @@ function formatDate(dateVal: string | Date | undefined): string {
   })
 }
 
-// ── 1. PDF Ticket Generation ──────────────────────────────────────────────────
+// ── Cryptographically Secure Ticket Code Generation ──────────────────────────
 
-export async function generateTourTicketPdfBuffer(tour: Tour, registration: TourRegistration): Promise<Buffer> {
-  const ticketCode = registration.ticketCode || `DMZP-TOUR-${registration.id.toString().padStart(5, '0')}`
+export function generateTicketCode(): string {
+  // 4 random bytes = 8 hex chars (32-bit entropy: ~4.3 billion unique possibilities)
+  return `DMZP-TOUR-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+}
 
-  // Resolve QR code URL pointing to the ticket verification page
+export async function generateUniqueTicketCode(maxRetries = 5): Promise<string> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const code = generateTicketCode()
+    const existing = await db
+      .select({ id: tourRegistrations.id })
+      .from(tourRegistrations)
+      .where(eq(tourRegistrations.ticketCode, code))
+      .limit(1)
+
+    if (existing.length === 0) {
+      return code
+    }
+  }
+  // Fallback with higher entropy in the unlikely event of collisions
+  return `DMZP-TOUR-${crypto.randomBytes(8).toString('hex').toUpperCase()}`
+}
+
+export async function ensureRegistrationTicketCode(registration: TourRegistration): Promise<string> {
+  if (registration.ticketCode && registration.ticketCode.trim() !== '') {
+    return registration.ticketCode.trim()
+  }
+
+  const newCode = await generateUniqueTicketCode()
+  await db.update(tourRegistrations)
+    .set({ ticketCode: newCode })
+    .where(eq(tourRegistrations.id, registration.id))
+  registration.ticketCode = newCode
+  return newCode
+}
+
+// ── Shared URL Builder ────────────────────────────────────────────────────────
+
+export function buildTicketWebUrl(tour: Tour, registration: TourRegistration): string {
+  if (!registration.ticketCode || registration.ticketCode.trim() === '') {
+    throw new Error(`Cannot build ticket URL for registration ${registration.id}: ticketCode is required and must be persisted`)
+  }
   const frontendOrigin = (
     config.appUrl ||
     (config.cors.origin && config.cors.origin !== '*' ? config.cors.origin : 'https://dmzp-dashboard-client.vercel.app')
   ).replace(/\/+$/, '')
-  const ticketWebUrl = `${frontendOrigin}/tour/${tour.slug}/ticket/${registration.id}`
+  return `${frontendOrigin}/tour/${tour.slug}/ticket/${encodeURIComponent(registration.ticketCode.trim())}`
+}
+
+// ── 1. PDF Ticket Generation ──────────────────────────────────────────────────
+
+export async function generateTourTicketPdfBuffer(tour: Tour, registration: TourRegistration): Promise<Buffer> {
+  const ticketCode = await ensureRegistrationTicketCode(registration)
+  const ticketWebUrl = buildTicketWebUrl(tour, registration)
 
   // Generate QR code as a PNG buffer for embedding in the PDF
   const qrPngBuffer = await QRCode.toBuffer(ticketWebUrl, {
@@ -48,8 +93,6 @@ export async function generateTourTicketPdfBuffer(tour: Tour, registration: Tour
     doc.on('data', (chunk: Buffer) => chunks.push(chunk))
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
-
-    const ticketCode = registration.ticketCode || `DMZP-TOUR-${registration.id.toString().padStart(5, '0')}`
 
     // Outer Background
     doc.rect(0, 0, 595.28, 420).fill('#f8fafc')
@@ -189,7 +232,7 @@ export async function generateTourTicketPdfBuffer(tour: Tour, registration: Tour
 // ── 2. HTML Email Generation ─────────────────────────────────────────────────
 
 export function generateTourTicketHtml(tour: Tour, registration: TourRegistration, ticketWebUrl: string): string {
-  const ticketCode = registration.ticketCode || `DMZP-TOUR-${registration.id.toString().padStart(5, '0')}`
+  const ticketCode = registration.ticketCode || ''
   const formattedDates = `${formatDate(tour.startDate)} – ${formatDate(tour.endDate)}`
   const paidText = registration.amountPaid > 0 ? `₹${registration.amountPaid.toLocaleString('en-IN')}` : (tour.isPaid ? `₹${tour.price.toLocaleString('en-IN')}` : 'Free Registration')
 
@@ -337,13 +380,10 @@ export async function sendTourTicketEmail(
       return { success: false, error: 'Registration has no email address' }
     }
 
-    // Resolve web origin for the ticket link
-    const frontendOrigin = (
-      config.appUrl ||
-      (config.cors.origin && config.cors.origin !== '*' ? config.cors.origin : 'https://dmzp-dashboard-client.vercel.app')
-    ).replace(/\/+$/, '')
+    // Ensure legacy registrations receive a persisted ticket code before links are generated
+    await ensureRegistrationTicketCode(registration)
 
-    const ticketWebUrl = `${frontendOrigin}/tour/${tour.slug}/ticket/${registration.id}`
+    const ticketWebUrl = buildTicketWebUrl(tour, registration)
 
     // Generate PDF Ticket Buffer
     const pdfBuffer = await generateTourTicketPdfBuffer(tour, registration)
@@ -387,7 +427,7 @@ export async function sendTourTicketEmail(
       to: toEmail,
       subject: `🎟️ Your Tour Ticket: ${tour.title} — DMZP`,
       html,
-      text: `Dear ${registration.fullName},\n\nYour tour registration for "${tour.title}" has been confirmed!\n\nDates: ${formatDate(tour.startDate)} – ${formatDate(tour.endDate)}\nDestination: ${tour.location}\nTicket Reference: ${registration.ticketCode || `DMZP-TOUR-${registration.id}`}\n\n${tour.whatsappGroupUrl ? `Join the official tour WhatsApp group:\n${tour.whatsappGroupUrl}\n\n` : ''}View your digital ticket online:\n${ticketWebUrl}\n\nPlease find your official ticket PDF attached.\n\nDelhi Mizo Zirlai Pawl (DMZP)`,
+      text: `Dear ${registration.fullName},\n\nYour tour registration for "${tour.title}" has been confirmed!\n\nDates: ${formatDate(tour.startDate)} – ${formatDate(tour.endDate)}\nDestination: ${tour.location}\nTicket Reference: ${registration.ticketCode || ''}\n\n${tour.whatsappGroupUrl ? `Join the official tour WhatsApp group:\n${tour.whatsappGroupUrl}\n\n` : ''}View your digital ticket online:\n${ticketWebUrl}\n\nPlease find your official ticket PDF attached.\n\nDelhi Mizo Zirlai Pawl (DMZP)`,
       attachments,
     })
 

@@ -86,6 +86,7 @@ export async function ensureTablesAndTestUser() {
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_code" varchar(50);`)
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_sent_at" timestamp;`)
   await db.execute(sql`UPDATE "tour_registrations" SET "ticket_code" = 'DMZP-TOUR-' || LPAD(id::text, 5, '0') WHERE "ticket_code" IS NULL;`)
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "idx_tour_registrations_ticket_code" ON "tour_registrations" ("ticket_code") WHERE "ticket_code" IS NOT NULL;`)
 
   console.log('✅ Tables "tours" and "tour_registrations" ready.')
 

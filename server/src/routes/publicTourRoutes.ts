@@ -165,11 +165,11 @@ router.post(
 
 // ── Public: View Ticket Details ───────────────────────────────────────────
 
-router.get('/registrations/:id/ticket', asyncHandler(async (req, res) => {
-  const id = parseInt(req.params.id as string)
-  if (isNaN(id) || id <= 0) return res.status(400).json({ success: false, error: 'Invalid registration ID' })
+router.get('/registrations/t/:ticketCode/ticket', asyncHandler(async (req, res) => {
+  const ticketCode = (req.params.ticketCode as string).trim()
+  if (!ticketCode) return res.status(400).json({ success: false, error: 'Invalid ticket code' })
 
-  const result = await tourController.getRegistrationById(id)
+  const result = await tourController.getRegistrationByTicketCode(ticketCode)
   if (!result.success) return res.status(404).json(result)
 
   // Only allow ticket access for verified (approved) registrations
@@ -186,9 +186,63 @@ router.get('/registrations/:id/ticket', asyncHandler(async (req, res) => {
 
 // ── Public: Download Ticket PDF ───────────────────────────────────────────
 
+router.get('/registrations/t/:ticketCode/ticket/pdf', asyncHandler(async (req, res) => {
+  const ticketCode = (req.params.ticketCode as string).trim()
+  if (!ticketCode) return res.status(400).json({ success: false, error: 'Invalid ticket code' })
+
+  const result = await tourController.getRegistrationByTicketCode(ticketCode)
+  if (!result.success || !result.data) return res.status(404).json({ success: false, error: 'Ticket not found' })
+
+  // Only allow PDF download for verified (approved) registrations
+  if (result.data.registration.paymentStatus !== 'verified') {
+    return res.status(403).json({
+      success: false,
+      error: 'Ticket PDF is not available until your registration is approved.',
+      code: 'TICKET_NOT_APPROVED',
+    })
+  }
+
+  const { tour, registration } = result.data
+  const pdfBuffer = await generateTourTicketPdfBuffer(tour, registration)
+
+  const safeTitle = tour.title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
+  const safeName = registration.fullName.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)
+
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `inline; filename="DMZP_Ticket_${safeTitle}_${safeName}.pdf"`)
+  res.send(pdfBuffer)
+}))
+
+// ── Legacy Compatibility: View Ticket Details by ID ───────────────────────
+
+router.get('/registrations/:id/ticket', asyncHandler(async (req, res) => {
+  const id = Number(req.params.id)
+  if (!id || isNaN(id)) return res.status(400).json({ success: false, error: 'Invalid registration ID' })
+
+  const result = await tourController.getRegistrationById(id)
+  if (!result.success || !result.data) return res.status(404).json(result)
+
+  // Only allow ticket access for verified (approved) registrations
+  if (result.data.registration.paymentStatus !== 'verified') {
+    return res.status(403).json({
+      success: false,
+      error: 'Ticket is not available yet. Your registration is pending verification by the admin.',
+      code: 'TICKET_NOT_APPROVED',
+    })
+  }
+
+  if (result.data.registration.ticketCode) {
+    return res.redirect(301, `${req.baseUrl}/registrations/t/${encodeURIComponent(result.data.registration.ticketCode)}/ticket`)
+  }
+
+  res.json(result)
+}))
+
+// ── Legacy Compatibility: Download Ticket PDF by ID ───────────────────────
+
 router.get('/registrations/:id/ticket/pdf', asyncHandler(async (req, res) => {
-  const id = parseInt(req.params.id as string)
-  if (isNaN(id) || id <= 0) return res.status(400).json({ success: false, error: 'Invalid registration ID' })
+  const id = Number(req.params.id)
+  if (!id || isNaN(id)) return res.status(400).json({ success: false, error: 'Invalid registration ID' })
 
   const result = await tourController.getRegistrationById(id)
   if (!result.success || !result.data) return res.status(404).json({ success: false, error: 'Ticket not found' })
@@ -200,6 +254,10 @@ router.get('/registrations/:id/ticket/pdf', asyncHandler(async (req, res) => {
       error: 'Ticket PDF is not available until your registration is approved.',
       code: 'TICKET_NOT_APPROVED',
     })
+  }
+
+  if (result.data.registration.ticketCode) {
+    return res.redirect(301, `${req.baseUrl}/registrations/t/${encodeURIComponent(result.data.registration.ticketCode)}/ticket/pdf`)
   }
 
   const { tour, registration } = result.data

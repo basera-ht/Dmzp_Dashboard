@@ -227,9 +227,9 @@ export function PublicTourView() {
 
           {/* Action Buttons */}
           <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3">
-            {isFree && completedReg?.id && (
+            {isFree && completedReg?.ticketCode && (
               <Link
-                to={`/tour/${tour.slug}/ticket/${completedReg.id}`}
+                to={`/tour/${tour.slug}/ticket/${encodeURIComponent(completedReg.ticketCode)}`}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors"
               >
                 <Ticket className="w-3.5 h-3.5" /> View Tour Ticket Pass

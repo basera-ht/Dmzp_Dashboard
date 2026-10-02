@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generateTourTicketPdfBuffer, generateTourTicketHtml } from './tourTicketService.js'
+import { generateTourTicketPdfBuffer, generateTourTicketHtml, generateTicketCode, buildTicketWebUrl } from './tourTicketService.js'
 import type { Tour, TourRegistration } from '../models/index.js'
 
 describe('Tour Ticket Service', () => {
@@ -70,5 +70,22 @@ describe('Tour Ticket Service', () => {
     expect(html).toContain('Manali Snow & Adventure Tour 2026')
     expect(html).toContain('Lalremruata Ralte')
     expect(html).not.toContain('Join Tour WhatsApp Group')
+  })
+
+  it('generates cryptographically secure ticket codes matching expected format', () => {
+    const code1 = generateTicketCode()
+    const code2 = generateTicketCode()
+
+    expect(code1).toMatch(/^DMZP-TOUR-[0-9A-F]{8}$/)
+    expect(code2).toMatch(/^DMZP-TOUR-[0-9A-F]{8}$/)
+    expect(code1).not.toBe(code2)
+  })
+
+  it('buildTicketWebUrl requires a persisted ticketCode and rejects unpersisted/empty codes', () => {
+    const url = buildTicketWebUrl(mockTour, mockRegistration)
+    expect(url).toContain(`/tour/${mockTour.slug}/ticket/DMZP-TOUR-00042`)
+
+    const regWithoutCode = { ...mockRegistration, ticketCode: '' }
+    expect(() => buildTicketWebUrl(mockTour, regWithoutCode as any)).toThrowError(/ticketCode is required and must be persisted/)
   })
 })

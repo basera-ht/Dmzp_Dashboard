@@ -176,7 +176,7 @@ export const tourRegistrations = pgTable('tour_registrations', {
   upiTransactionId: varchar('upi_transaction_id', { length: 100 }),
   paymentScreenshotUrl: varchar('payment_screenshot_url', { length: 500 }),
   paymentStatus: paymentStatusEnum('payment_status').default('pending_verification').notNull(),
-  ticketCode: varchar('ticket_code', { length: 50 }),
+  ticketCode: varchar('ticket_code', { length: 50 }).unique(),
   ticketSentAt: timestamp('ticket_sent_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
