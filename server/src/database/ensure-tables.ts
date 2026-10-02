@@ -12,11 +12,7 @@ export const TEST_CREDENTIALS = {
   role: 'Admin',
 }
 
-export async function ensureTablesAndTestUser() {
-  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_TEST_SETUP) {
-    throw new Error('Refusing to set up test credentials in production without explicit ALLOW_TEST_SETUP')
-  }
-
+export async function ensureTables(): Promise<void> {
   console.log('--- Ensuring Database Tables & Enums ---')
 
   // 1. Create Enums if not exist
@@ -88,7 +84,17 @@ export async function ensureTablesAndTestUser() {
   await db.execute(sql`UPDATE "tour_registrations" SET "ticket_code" = 'DMZP-TOUR-' || LPAD(id::text, 5, '0') WHERE "ticket_code" IS NULL;`)
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "idx_tour_registrations_ticket_code" ON "tour_registrations" ("ticket_code") WHERE "ticket_code" IS NOT NULL;`)
 
-  console.log('✅ Tables "tours" and "tour_registrations" ready.')
+  console.log('✅ Tables "tours" and "tour_registrations" schema up to date.')
+}
+
+export async function ensureTablesAndTestUser(): Promise<void> {
+  // Always run schema migrations safely
+  await ensureTables()
+
+  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_TEST_SETUP) {
+    console.log('ℹ️ Skipping test user setup in production (ALLOW_TEST_SETUP not set).')
+    return
+  }
 
   // 4. Create or update test credentials securely
   console.log('--- Setting Up Marked Test Credentials ---')
