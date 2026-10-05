@@ -37,6 +37,8 @@ describe('Tour Ticket Service', () => {
     upiTransactionId: null,
     paymentScreenshotUrl: '/uploads/tours/receipts/proof.png',
     paymentStatus: 'verified',
+    dmzpFeesPaid: false,
+    dmzpCardUrl: null,
     ticketCode: 'DMZP-TOUR-00042',
     ticketSentAt: null,
     createdAt: new Date('2026-10-02T10:30:00.000Z'),

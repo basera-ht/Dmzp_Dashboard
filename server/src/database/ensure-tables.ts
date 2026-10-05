@@ -81,6 +81,8 @@ export async function ensureTables(): Promise<void> {
   await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "upi_qr_image_2" varchar(500);`)
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_code" varchar(50);`)
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_sent_at" timestamp;`)
+  await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "dmzp_fees_paid" boolean DEFAULT false NOT NULL;`)
+  await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "dmzp_card_url" varchar(500);`)
   await db.execute(sql`UPDATE "tour_registrations" SET "ticket_code" = 'DMZP-TOUR-' || LPAD(id::text, 5, '0') WHERE "ticket_code" IS NULL;`)
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "idx_tour_registrations_ticket_code" ON "tour_registrations" ("ticket_code") WHERE "ticket_code" IS NOT NULL;`)
 

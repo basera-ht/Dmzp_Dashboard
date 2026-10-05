@@ -4,7 +4,7 @@ import QRCode from 'react-qr-code'
 import {
   MapPin, Calendar, Users, IndianRupee, Copy, Check,
   AlertCircle, Loader2, Upload, ChevronRight, CheckCircle2,
-  ChevronLeft, ImageIcon, X, Ticket, ExternalLink,
+  ChevronLeft, ImageIcon, X, Ticket, ExternalLink, CreditCard,
 } from 'lucide-react'
 import { API_BASE_URL, getMediaUrl } from '../../lib/api'
 import type { Tour } from './Tours'
@@ -51,7 +51,13 @@ export function PublicTourView() {
   const [submitError, setSubmitError] = useState('')
   const [copied, setCopied] = useState(false)
   const [copied2, setCopied2] = useState(false)
+  const [copiedDmzp, setCopiedDmzp] = useState(false)
   const [completedReg, setCompletedReg] = useState<{ id: number; ticketCode?: string } | null>(null)
+
+  // DMZP membership fee state
+  const [dmzpFeesPaid, setDmzpFeesPaid] = useState<'yes' | 'no' | null>(null)
+  const [dmzpCard, setDmzpCard] = useState<File | null>(null)
+  const [dmzpCardPreview, setDmzpCardPreview] = useState<string | null>(null)
 
   useEffect(() => {
     if (!slug) return
@@ -73,6 +79,17 @@ export function PublicTourView() {
       setScreenshotPreview(url)
     } else {
       setScreenshotPreview(null)
+    }
+  }
+
+  // Handle DMZP card selection and preview URL
+  const handleDmzpCardChange = (file: File | null) => {
+    setDmzpCard(file)
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setDmzpCardPreview(url)
+    } else {
+      setDmzpCardPreview(null)
     }
   }
 
@@ -100,12 +117,25 @@ export function PublicTourView() {
     }
   }
 
+  const copyDmzpUpi = () => {
+    if (tour?.upiId) {
+      navigator.clipboard.writeText(tour.upiId)
+      setCopiedDmzp(true)
+      setTimeout(() => setCopiedDmzp(false), 2000)
+    }
+  }
+
   const isEmailValid = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
 
   const canSubmitStep0 = () => {
     if (!fullName.trim() || !email.trim() || !phone.trim() || !isEmailValid(email)) return false
     const requiredFields = tour?.customFormFields?.filter((f) => f.required) || []
-    return requiredFields.every((f) => customResponses[f.id]?.trim())
+    if (!requiredFields.every((f) => customResponses[f.id]?.trim())) return false
+    // DMZP membership choice is required
+    if (dmzpFeesPaid === null) return false
+    // If they said yes, they must upload their DMZP card
+    if (dmzpFeesPaid === 'yes' && !dmzpCard) return false
+    return true
   }
 
   // Payment screenshot is required for paid tours!
@@ -128,8 +158,12 @@ export function PublicTourView() {
       formData.append('phoneNumber', phone.trim())
       formData.append('customResponses', JSON.stringify(customResponses))
       formData.append('amountPaid', String(tour.isPaid ? tour.price : 0))
+      formData.append('dmzpFeesPaid', dmzpFeesPaid || 'no')
       if (screenshot) {
         formData.append('paymentScreenshot', screenshot)
+      }
+      if (dmzpCard) {
+        formData.append('dmzpCard', dmzpCard)
       }
 
       const regData = await fetch(`${API_BASE_URL}/public/tours/t/${slug}/register`, {
@@ -420,6 +454,139 @@ export function PublicTourView() {
                   )}
                 </div>
               ))}
+
+              {/* DMZP Membership Fee Section */}
+              <div className="mt-2 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                    <CreditCard className="w-4 h-4 text-teal-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">DMZP Membership Fee <span className="text-red-500">*</span></h3>
+                    <p className="text-xs text-gray-500">Have you already paid your DMZP membership fees?</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setDmzpFeesPaid('yes')}
+                    className={
+                      dmzpFeesPaid === 'yes'
+                        ? 'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border-2 bg-green-50 border-green-500 text-green-700 shadow-sm'
+                        : 'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border-2 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    }
+                  >
+                    Yes, I have paid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setDmzpFeesPaid('no'); setDmzpCard(null); setDmzpCardPreview(null); }}
+                    className={
+                      dmzpFeesPaid === 'no'
+                        ? 'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border-2 bg-amber-50 border-amber-500 text-amber-700 shadow-sm'
+                        : 'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border-2 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    }
+                  >
+                    No, not yet
+                  </button>
+                </div>
+
+                {dmzpFeesPaid === 'yes' && (
+                  <div className="mt-3 p-4 bg-green-50/60 border border-green-200 rounded-2xl">
+                    <label className="block text-sm font-bold text-gray-800 mb-1.5">
+                      Upload your DMZP Membership Card <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Please upload a photo or screenshot of your DMZP membership card as proof.
+                    </p>
+                    {dmzpCardPreview ? (
+                      <div className="relative rounded-2xl border-2 border-green-400/40 bg-green-50/30 p-4 flex items-center gap-4">
+                        <img
+                          src={dmzpCardPreview}
+                          alt="DMZP Card preview"
+                          className="w-20 h-20 object-cover rounded-xl border border-green-200 shadow-sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{dmzpCard?.name}</p>
+                          <p className="text-xs text-gray-500">{dmzpCard ? (dmzpCard.size / 1024).toFixed(1) + ' KB' : ''}</p>
+                          <label className="inline-block mt-1 text-xs text-green-700 hover:text-green-800 font-semibold cursor-pointer underline">
+                            Change image
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif"
+                              className="sr-only"
+                              onChange={(e) => handleDmzpCardChange(e.target.files?.[0] || null)}
+                            />
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDmzpCardChange(null)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white"
+                          title="Remove card"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-green-300 hover:border-green-500 bg-green-50/20 hover:bg-green-50/40 rounded-2xl cursor-pointer transition-colors text-center focus-within:ring-2 focus-within:ring-green-500 focus-within:outline-none">
+                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">Click to upload your DMZP Card</p>
+                          <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WebP or GIF up to 10MB</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="sr-only"
+                          onChange={(e) => handleDmzpCardChange(e.target.files?.[0] || null)}
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
+
+                {dmzpFeesPaid === 'no' && tour.upiId && (
+                  <div className="mt-3 p-4 bg-amber-50/60 border border-amber-200 rounded-2xl">
+                    <h4 className="text-sm font-bold text-amber-900 mb-1">Pay DMZP Membership Fee</h4>
+                    <p className="text-xs text-amber-800 mb-3 leading-relaxed">
+                      Please pay the DMZP membership fee using the UPI ID below.
+                      Your membership will be linked to your profile once payment is confirmed.
+                    </p>
+                    <div className="bg-white rounded-xl p-3 border border-amber-200/80">
+                      <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+                        <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
+                        <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
+                          {tour.upiId}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={copyDmzpUpi}
+                          className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
+                          title="Copy UPI ID"
+                        >
+                          {copiedDmzp ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {tour.upiQrImage && (
+                        <div className="flex justify-center mt-2">
+                          <img
+                            src={getMediaUrl(tour.upiQrImage)}
+                            alt="DMZP UPI QR"
+                            className="w-36 h-36 object-contain rounded-lg border border-gray-200"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-amber-700 mt-2 italic text-center">
+                      You can proceed with registration. Your DMZP membership status will be updated once payment is confirmed.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={() => (tour.isPaid ? setStep(1) : handleSubmit())}

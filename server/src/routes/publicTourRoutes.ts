@@ -58,6 +58,7 @@ const registrationSchema = z.object({
   phoneNumber: z.string().trim().min(10, 'Phone number must be at least 10 digits').max(50),
   customResponses: z.record(z.string(), z.string()).optional(),
   upiTransactionId: z.string().trim().max(100).optional(),
+  dmzpFeesPaid: z.enum(['yes', 'no']).optional(),
 })
 
 const screenshotUpload = multer({
@@ -68,7 +69,10 @@ const screenshotUpload = multer({
     if (allowed.includes(file.mimetype)) cb(null, true)
     else cb(new Error('Only JPG, PNG, WebP, and GIF images are allowed'))
   },
-})
+}).fields([
+  { name: 'paymentScreenshot', maxCount: 1 },
+  { name: 'dmzpCard', maxCount: 1 },
+])
 
 // ── Public: Get published tour by slug ─────────────────────────────────────
 
@@ -88,7 +92,7 @@ router.get(['/:slug', '/t/:slug'], asyncHandler(async (req, res) => {
 router.post(
   ['/:slug/register', '/t/:slug/register'],
   registrationRateLimiter,
-  screenshotUpload.single('paymentScreenshot'),
+  screenshotUpload,
   asyncHandler(async (req, res) => {
     const slug = req.params.slug as string
     const tourResult = await tourController.getBySlug(slug)
@@ -111,6 +115,7 @@ router.post(
         phoneNumber: req.body.phoneNumber,
         customResponses: req.body.customResponses ? JSON.parse(req.body.customResponses) : {},
         upiTransactionId: req.body.upiTransactionId || undefined,
+        dmzpFeesPaid: req.body.dmzpFeesPaid || 'no',
       }
     } catch {
       return res.status(400).json({ success: false, error: 'Invalid form data' })
@@ -120,8 +125,12 @@ router.post(
     if (!parsed.success) return res.status(400).json({ success: false, error: parsed.error.errors[0]?.message || 'Invalid registration data' })
 
     // Requirement: Payment screenshot is MANDATORY for paid tours
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined
+    const paymentFile = files?.paymentScreenshot?.[0]
+    const dmzpCardFile = files?.dmzpCard?.[0]
+
     if (tour.isPaid && tour.price > 0) {
-      if (!req.file) {
+      if (!paymentFile) {
         return res.status(400).json({
           success: false,
           error: 'Payment screenshot is required for paid tour registration',
@@ -131,12 +140,23 @@ router.post(
 
     // Process file upload ONLY if the tour is paid; skip storing file for free tours
     let paymentScreenshotUrl: string | undefined
-    if (tour.isPaid && req.file) {
-      const uploadResult = await uploadFileToS3(req.file.buffer, req.file.originalname, req.file.mimetype, 'tours/receipts')
+    if (tour.isPaid && paymentFile) {
+      const uploadResult = await uploadFileToS3(paymentFile.buffer, paymentFile.originalname, paymentFile.mimetype, 'tours/receipts')
       if (!uploadResult.success || !uploadResult.url) {
         return res.status(500).json({ success: false, error: 'Failed to process and store payment screenshot. Please try again.' })
       }
       paymentScreenshotUrl = uploadResult.url
+    }
+
+    // Process DMZP card upload if participant said yes to DMZP fees
+    let dmzpCardUrl: string | undefined
+    const dmzpFeesPaid = parsed.data.dmzpFeesPaid === 'yes'
+    if (dmzpFeesPaid && dmzpCardFile) {
+      const uploadResult = await uploadFileToS3(dmzpCardFile.buffer, dmzpCardFile.originalname, dmzpCardFile.mimetype, 'tours/dmzp-cards')
+      if (!uploadResult.success || !uploadResult.url) {
+        return res.status(500).json({ success: false, error: 'Failed to upload DMZP card. Please try again.' })
+      }
+      dmzpCardUrl = uploadResult.url
     }
 
     // Amount paid is strictly authoritative based on tour.price and tour.isPaid (ignoring req.body.amountPaid)
@@ -152,6 +172,8 @@ router.post(
       amountPaid: authoritativeAmount,
       upiTransactionId: parsed.data.upiTransactionId || null,
       paymentScreenshotUrl: paymentScreenshotUrl || null,
+      dmzpFeesPaid,
+      dmzpCardUrl: dmzpCardUrl || null,
       paymentStatus: tour.isPaid ? 'pending_verification' : 'verified',
     })
 

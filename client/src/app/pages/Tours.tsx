@@ -50,6 +50,8 @@ export interface TourRegistration {
   amountPaid: number
   upiTransactionId?: string
   paymentScreenshotUrl?: string
+  dmzpFeesPaid?: boolean
+  dmzpCardUrl?: string
   paymentStatus: 'pending_verification' | 'verified' | 'rejected'
   ticketCode?: string
   ticketSentAt?: string
@@ -744,13 +746,15 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
   }
 
   const exportCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Amount', 'Payment Screenshot URL', 'Status', 'Date']
+    const headers = ['Name', 'Email', 'Phone', 'Amount', 'Payment Screenshot URL', 'DMZP Member', 'DMZP Card URL', 'Status', 'Date']
     const rows = registrations.map((r) => [
       r.fullName,
       r.email,
       r.phoneNumber,
       r.amountPaid,
       r.paymentScreenshotUrl ? getMediaUrl(r.paymentScreenshotUrl) : 'None',
+      r.dmzpFeesPaid ? 'Yes' : 'No',
+      r.dmzpCardUrl ? getMediaUrl(r.dmzpCardUrl) : 'None',
       PAYMENT_LABELS[r.paymentStatus],
       formatDate(r.createdAt),
     ])
@@ -852,6 +856,9 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                       Payment Screenshot
                     </th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-600 text-xs uppercase tracking-wider">
+                      DMZP Member
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600 text-xs uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-600 text-xs uppercase tracking-wider">
@@ -902,6 +909,29 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                         ) : (
                           <span className="text-gray-400 text-xs italic">
                             {r.amountPaid === 0 ? 'Free registration' : 'No screenshot'}
+                          </span>
+                        )}
+                      </td>
+                      {/* DMZP Membership Status */}
+                      <td className="px-4 py-3">
+                        {r.dmzpFeesPaid ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 border border-green-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                              Paid
+                            </span>
+                            {r.dmzpCardUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProof(r)}
+                                className="text-[10px] text-teal-600 hover:underline font-semibold flex items-center gap-0.5"
+                              >
+                                <Eye className="w-3 h-3" /> View Card
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            Not Paid
                           </span>
                         )}
                       </td>
@@ -999,11 +1029,26 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
             </div>
 
             <div className="p-4 bg-gray-950 flex items-center justify-center max-h-[65vh] overflow-auto">
-              <img
-                src={getMediaUrl(selectedProof.paymentScreenshotUrl)}
-                alt="Full Payment Screenshot"
-                className="max-h-[60vh] w-auto object-contain rounded-xl shadow-lg"
-              />
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-center">
+                  <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Payment Screenshot</div>
+                  <img
+                    src={getMediaUrl(selectedProof.paymentScreenshotUrl)}
+                    alt="Full Payment Screenshot"
+                    className="max-h-[50vh] w-auto object-contain rounded-xl shadow-lg"
+                  />
+                </div>
+                {selectedProof.dmzpCardUrl && (
+                  <div className="text-center">
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">DMZP Membership Card</div>
+                    <img
+                      src={getMediaUrl(selectedProof.dmzpCardUrl)}
+                      alt="DMZP Card"
+                      className="max-h-[50vh] w-auto object-contain rounded-xl shadow-lg"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
