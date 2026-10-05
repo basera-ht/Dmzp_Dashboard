@@ -117,12 +117,11 @@ export function PublicTourView() {
     }
   }
 
-  const copyDmzpUpi = () => {
-    if (tour?.upiId) {
-      navigator.clipboard.writeText(tour.upiId)
-      setCopiedDmzp(true)
-      setTimeout(() => setCopiedDmzp(false), 2000)
-    }
+  const copyDmzpUpi = (customUpi?: string) => {
+    const target = customUpi || tour?.upiId || 'dmzp@okhdfcbank'
+    navigator.clipboard.writeText(target)
+    setCopiedDmzp(true)
+    setTimeout(() => setCopiedDmzp(false), 2000)
   }
 
   const isEmailValid = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
@@ -145,6 +144,10 @@ export function PublicTourView() {
     if (!tour) return
     if (tour.isPaid && !screenshot) {
       setSubmitError('Please upload your payment screenshot to proceed.')
+      return
+    }
+    if (dmzpFeesPaid === 'yes' && !dmzpCard) {
+      setSubmitError('Please upload your DMZP card to proceed.')
       return
     }
 
@@ -549,38 +552,60 @@ export function PublicTourView() {
                   </div>
                 )}
 
-                {dmzpFeesPaid === 'no' && tour.upiId && (
+                {dmzpFeesPaid === 'no' && (
                   <div className="mt-3 p-4 bg-amber-50/60 border border-amber-200 rounded-2xl">
                     <h4 className="text-sm font-bold text-amber-900 mb-1">Pay DMZP Membership Fee</h4>
                     <p className="text-xs text-amber-800 mb-3 leading-relaxed">
                       Please pay the DMZP membership fee using the UPI ID below.
                       Your membership will be linked to your profile once payment is confirmed.
                     </p>
-                    <div className="bg-white rounded-xl p-3 border border-amber-200/80">
-                      <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-                        <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
-                        <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
-                          {tour.upiId}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={copyDmzpUpi}
-                          className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
-                          title="Copy UPI ID"
-                        >
-                          {copiedDmzp ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      {tour.upiQrImage && (
-                        <div className="flex justify-center mt-2">
-                          <img
-                            src={getMediaUrl(tour.upiQrImage)}
-                            alt="DMZP UPI QR"
-                            className="w-36 h-36 object-contain rounded-lg border border-gray-200"
-                          />
+                    {tour.upiId ? (
+                      <div className="bg-white rounded-xl p-3 border border-amber-200/80">
+                        <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
+                          <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
+                            {tour.upiId}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => copyDmzpUpi(tour.upiId)}
+                            className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
+                            title="Copy UPI ID"
+                          >
+                            {copiedDmzp ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                          </button>
                         </div>
-                      )}
-                    </div>
+                        {tour.upiQrImage && (
+                          <div className="flex justify-center mt-2">
+                            <img
+                              src={getMediaUrl(tour.upiQrImage)}
+                              alt="DMZP UPI QR"
+                              className="w-36 h-36 object-contain rounded-lg border border-gray-200"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-xl p-3 border border-amber-200/80">
+                        <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Membership UPI ID:</span>
+                          <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
+                            dmzp@okhdfcbank
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => copyDmzpUpi('dmzp@okhdfcbank')}
+                            className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
+                            title="Copy UPI ID"
+                          >
+                            {copiedDmzp ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <p className="text-xs text-amber-800 text-center mt-2 leading-relaxed">
+                          For this free tour, you can pay your DMZP membership fee to the UPI ID above or pay in person at the event registration desk.
+                        </p>
+                      </div>
+                    )}
                     <p className="text-[11px] text-amber-700 mt-2 italic text-center">
                       You can proceed with registration. Your DMZP membership status will be updated once payment is confirmed.
                     </p>

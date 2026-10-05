@@ -1007,17 +1007,17 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
         </div>
       </div>
 
-      {/* ── High-Resolution Payment Screenshot Lightbox Modal ─────────────── */}
-      {selectedProof && selectedProof.paymentScreenshotUrl && (
+      {/* ── High-Resolution Payment Screenshot / DMZP Card Lightbox Modal ─────────────── */}
+      {selectedProof && (selectedProof.paymentScreenshotUrl || selectedProof.dmzpCardUrl) && (
         <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-gray-900 text-base">
-                  Payment Screenshot — {selectedProof.fullName}
+                  {selectedProof.paymentScreenshotUrl ? 'Proof & Verification' : 'DMZP Membership Card'} — {selectedProof.fullName}
                 </h3>
                 <p className="text-xs text-gray-500">
-                  Amount: ₹{selectedProof.amountPaid} • Registered: {formatDate(selectedProof.createdAt)}
+                  {selectedProof.paymentScreenshotUrl && `Amount: ₹${selectedProof.amountPaid} • `}Registered: {formatDate(selectedProof.createdAt)}
                 </p>
               </div>
               <button
@@ -1030,14 +1030,16 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
 
             <div className="p-4 bg-gray-950 flex items-center justify-center max-h-[65vh] overflow-auto">
               <div className="flex flex-col items-center gap-4">
-                <div className="text-center">
-                  <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Payment Screenshot</div>
-                  <img
-                    src={getMediaUrl(selectedProof.paymentScreenshotUrl)}
-                    alt="Full Payment Screenshot"
-                    className="max-h-[50vh] w-auto object-contain rounded-xl shadow-lg"
-                  />
-                </div>
+                {selectedProof.paymentScreenshotUrl && (
+                  <div className="text-center">
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Payment Screenshot</div>
+                    <img
+                      src={getMediaUrl(selectedProof.paymentScreenshotUrl)}
+                      alt="Full Payment Screenshot"
+                      className="max-h-[50vh] w-auto object-contain rounded-xl shadow-lg"
+                    />
+                  </div>
+                )}
                 {selectedProof.dmzpCardUrl && (
                   <div className="text-center">
                     <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">DMZP Membership Card</div>
@@ -1052,39 +1054,55 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
             </div>
 
             <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
-              <a
-                href={getMediaUrl(selectedProof.paymentScreenshotUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-teal-600 hover:underline font-semibold flex items-center gap-1"
-              >
-                Open original full-size image <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-
-              <div className="flex items-center gap-2">
-                {selectedProof.paymentStatus === 'pending_verification' && (
-                  <>
-                    <button
-                      onClick={() => {
-                        handleAction(selectedProof.id, 'reject')
-                        setSelectedProof(null)
-                      }}
-                      className="px-3 py-1.5 text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 rounded-lg border border-red-200"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleAction(selectedProof.id, 'approve')
-                        setSelectedProof(null)
-                      }}
-                      className="px-4 py-1.5 text-xs font-semibold bg-green-600 text-white hover:bg-green-700 rounded-lg shadow-sm"
-                    >
-                      Approve Payment
-                    </button>
-                  </>
+              <div className="flex flex-wrap items-center gap-3">
+                {selectedProof.paymentScreenshotUrl && (
+                  <a
+                    href={getMediaUrl(selectedProof.paymentScreenshotUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-teal-600 hover:underline font-semibold flex items-center gap-1"
+                  >
+                    Open original full-size image <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                {selectedProof.dmzpCardUrl && (
+                  <a
+                    href={getMediaUrl(selectedProof.dmzpCardUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-teal-600 hover:underline font-semibold flex items-center gap-1"
+                  >
+                    Open DMZP card <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
                 )}
               </div>
+
+              {selectedProof.paymentScreenshotUrl && (
+                <div className="flex items-center gap-2">
+                  {selectedProof.paymentStatus === 'pending_verification' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          handleAction(selectedProof.id, 'reject')
+                          setSelectedProof(null)
+                        }}
+                        className="px-3 py-1.5 text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 rounded-lg border border-red-200"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleAction(selectedProof.id, 'approve')
+                          setSelectedProof(null)
+                        }}
+                        className="px-4 py-1.5 text-xs font-semibold bg-green-600 text-white hover:bg-green-700 rounded-lg shadow-sm"
+                      >
+                        Approve Payment
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

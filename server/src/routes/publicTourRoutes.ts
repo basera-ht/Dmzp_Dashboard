@@ -58,7 +58,7 @@ const registrationSchema = z.object({
   phoneNumber: z.string().trim().min(10, 'Phone number must be at least 10 digits').max(50),
   customResponses: z.record(z.string(), z.string()).optional(),
   upiTransactionId: z.string().trim().max(100).optional(),
-  dmzpFeesPaid: z.enum(['yes', 'no']).optional(),
+  dmzpFeesPaid: z.enum(['yes', 'no']),
 })
 
 const screenshotUpload = multer({
@@ -115,7 +115,7 @@ router.post(
         phoneNumber: req.body.phoneNumber,
         customResponses: req.body.customResponses ? JSON.parse(req.body.customResponses) : {},
         upiTransactionId: req.body.upiTransactionId || undefined,
-        dmzpFeesPaid: req.body.dmzpFeesPaid || 'no',
+        dmzpFeesPaid: req.body.dmzpFeesPaid,
       }
     } catch {
       return res.status(400).json({ success: false, error: 'Invalid form data' })
@@ -136,6 +136,14 @@ router.post(
           error: 'Payment screenshot is required for paid tour registration',
         })
       }
+    }
+
+    // Requirement: DMZP Card is required if participant selected 'yes' for DMZP fees paid
+    if (parsed.data.dmzpFeesPaid === 'yes' && !dmzpCardFile) {
+      return res.status(400).json({
+        success: false,
+        error: 'DMZP member card upload is required when selecting Yes for DMZP membership fees',
+      })
     }
 
     // Process file upload ONLY if the tour is paid; skip storing file for free tours
