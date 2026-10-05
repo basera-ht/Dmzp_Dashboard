@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams, Link, useNavigate } from 'react-router'
 import QRCode from 'react-qr-code'
 import {
   MapPin, Calendar, Users, IndianRupee, Copy, Check,
@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { API_BASE_URL, getMediaUrl } from '../../lib/api'
 import type { Tour } from './Tours'
+
+const DMZP_MEMBERSHIP_UPI_ID = 'dmzp@okhdfcbank'
 
 function formatDate(d: string) {
   try {
@@ -34,6 +36,7 @@ async function publicFetch(url: string, options?: RequestInit) {
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function PublicTourView() {
+  const navigate = useNavigate()
   const { slug } = useParams<{ slug: string }>()
   const [tour, setTour] = useState<Tour | null>(null)
   const [loading, setLoading] = useState(true)
@@ -118,7 +121,7 @@ export function PublicTourView() {
   }
 
   const copyDmzpUpi = (customUpi?: string) => {
-    const target = customUpi || tour?.upiId || 'dmzp@okhdfcbank'
+    const target = customUpi || DMZP_MEMBERSHIP_UPI_ID
     navigator.clipboard.writeText(target)
     setCopiedDmzp(true)
     setTimeout(() => setCopiedDmzp(false), 2000)
@@ -230,7 +233,13 @@ export function PublicTourView() {
           <p className="text-gray-500 text-sm max-w-sm mx-auto">{error || 'This tour may have been removed or is no longer available.'}</p>
           <button
             type="button"
-            onClick={() => window.history.back()}
+            onClick={() => {
+              if (window.history.length > 1 && document.referrer) {
+                window.history.back()
+              } else {
+                navigate('/')
+              }
+            }}
             className="inline-block mt-4 text-teal-600 hover:text-teal-700 text-sm font-semibold"
           >
             ← Go back
@@ -589,31 +598,23 @@ export function PublicTourView() {
                     <div className="bg-white rounded-xl p-4 border border-amber-200/80 flex flex-col items-center text-center">
                       {/* Membership Fee QR Code */}
                       <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
-                        {tour.upiId && tour.upiQrImage ? (
-                          <img
-                            src={getMediaUrl(tour.upiQrImage)}
-                            alt="DMZP Membership UPI QR"
-                            className="w-36 h-36 object-contain rounded-lg"
-                          />
-                        ) : (
-                          <QRCode
-                            value={`upi://pay?pa=${encodeURIComponent(tour.upiId || 'dmzp@okhdfcbank')}&pn=DMZP+Membership&cu=INR&tn=DMZP+Membership+Fee`}
-                            size={144}
-                          />
-                        )}
+                        <QRCode
+                          value={`upi://pay?pa=${encodeURIComponent(DMZP_MEMBERSHIP_UPI_ID)}&pn=DMZP+Membership&cu=INR&tn=DMZP+Membership+Fee`}
+                          size={144}
+                        />
                       </div>
                       <p className="text-[11px] text-gray-500 font-medium mb-3">Scan with GPay, PhonePe, Paytm or any UPI app</p>
 
                       <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
                         <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                          {tour.upiId ? 'UPI ID:' : 'Membership UPI ID:'}
+                          Membership UPI ID:
                         </span>
                         <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
-                          {tour.upiId || 'dmzp@okhdfcbank'}
+                          {DMZP_MEMBERSHIP_UPI_ID}
                         </code>
                         <button
                           type="button"
-                          onClick={() => copyDmzpUpi(tour.upiId || 'dmzp@okhdfcbank')}
+                          onClick={() => copyDmzpUpi(DMZP_MEMBERSHIP_UPI_ID)}
                           className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
                           title="Copy UPI ID"
                         >
@@ -824,29 +825,6 @@ export function PublicTourView() {
                     Limit: &lt; 100 KB
                   </span>
                 </div>
-
-                {dmzpCard && !screenshot && (
-                  <div className="mb-3 p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img
-                        src={dmzpCardPreview || ''}
-                        alt="Uploaded payment proof"
-                        className="w-10 h-10 object-cover rounded-lg border border-teal-200 shrink-0"
-                      />
-                      <div className="text-xs min-w-0">
-                        <p className="font-semibold text-teal-900 truncate">Payment screenshot uploaded</p>
-                        <p className="text-[11px] text-teal-700">Use this screenshot for tour verification as well?</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleScreenshotChange(dmzpCard)}
-                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shrink-0 shadow-xs transition-colors"
-                    >
-                      Use this screenshot
-                    </button>
-                  </div>
-                )}
 
                 {screenshotPreview ? (
                   <div>

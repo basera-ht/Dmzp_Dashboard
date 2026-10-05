@@ -136,6 +136,12 @@ router.post(
           error: 'Payment screenshot is required for paid tour registration',
         })
       }
+      if (paymentFile.size > 100 * 1024) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment screenshot size must be lower than 100 KB',
+        })
+      }
     }
 
     // Requirement: DMZP Card is required if participant selected 'yes' for DMZP fees paid
