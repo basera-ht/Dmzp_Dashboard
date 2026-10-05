@@ -930,9 +930,20 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                             )}
                           </div>
                         ) : (
-                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                            Not Paid
-                          </span>
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                              {r.dmzpCardUrl ? 'Receipt Uploaded' : 'Not Paid'}
+                            </span>
+                            {r.dmzpCardUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProof(r)}
+                                className="text-[10px] text-teal-600 hover:underline font-semibold flex items-center gap-0.5"
+                              >
+                                <Eye className="w-3 h-3" /> View Proof
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1042,10 +1053,12 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                 )}
                 {selectedProof.dmzpCardUrl && (
                   <div className="text-center">
-                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">DMZP Membership Card</div>
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">
+                      {selectedProof.dmzpFeesPaid ? 'DMZP Membership Card' : 'DMZP Membership Fee Receipt'}
+                    </div>
                     <img
                       src={getMediaUrl(selectedProof.dmzpCardUrl)}
-                      alt="DMZP Card"
+                      alt="DMZP Proof"
                       className="max-h-[50vh] w-auto object-contain rounded-xl shadow-lg"
                     />
                   </div>
@@ -1072,7 +1085,7 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                     rel="noopener noreferrer"
                     className="text-xs text-teal-600 hover:underline font-semibold flex items-center gap-1"
                   >
-                    Open DMZP card <ExternalLink className="w-3.5 h-3.5" />
+                    Open {selectedProof.dmzpFeesPaid ? 'DMZP card' : 'fee receipt'} <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
               </div>

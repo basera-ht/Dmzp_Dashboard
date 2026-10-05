@@ -156,16 +156,16 @@ router.post(
       paymentScreenshotUrl = uploadResult.url
     }
 
-    // Process DMZP card upload if participant said yes to DMZP fees
+    // Process DMZP card or fee payment screenshot if provided
     let dmzpCardUrl: string | undefined
-    const dmzpFeesPaid = parsed.data.dmzpFeesPaid === 'yes'
-    if (dmzpFeesPaid && dmzpCardFile) {
+    if (dmzpCardFile) {
       const uploadResult = await uploadFileToS3(dmzpCardFile.buffer, dmzpCardFile.originalname, dmzpCardFile.mimetype, 'tours/dmzp-cards')
       if (!uploadResult.success || !uploadResult.url) {
-        return res.status(500).json({ success: false, error: 'Failed to upload DMZP card. Please try again.' })
+        return res.status(500).json({ success: false, error: 'Failed to upload DMZP membership proof. Please try again.' })
       }
       dmzpCardUrl = uploadResult.url
     }
+    const dmzpFeesPaid = parsed.data.dmzpFeesPaid === 'yes'
 
     // Amount paid is strictly authoritative based on tour.price and tour.isPaid (ignoring req.body.amountPaid)
     const authoritativeAmount = tour.isPaid ? tour.price : 0

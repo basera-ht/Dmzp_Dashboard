@@ -137,13 +137,17 @@ export function PublicTourView() {
     return true
   }
 
-  // Payment screenshot is required for paid tours!
-  const canSubmitStep1 = () => Boolean(screenshot)
+  // Payment screenshot is required for paid tours and should be lower than 100 KB
+  const canSubmitStep1 = () => Boolean(screenshot) && (screenshot ? screenshot.size <= 100 * 1024 : true)
 
   const handleSubmit = async () => {
     if (!tour) return
     if (tour.isPaid && !screenshot) {
       setSubmitError('Please upload your payment screenshot to proceed.')
+      return
+    }
+    if (tour.isPaid && screenshot && screenshot.size > 100 * 1024) {
+      setSubmitError(`Payment screenshot size is ${(screenshot.size / 1024).toFixed(1)} KB. The upload screenshot should be lower than 100 KB.`)
       return
     }
     if (dmzpFeesPaid === 'yes' && !dmzpCard) {
@@ -191,6 +195,22 @@ export function PublicTourView() {
     }
   }
 
+  const handleResetForm = () => {
+    setStep(0)
+    setFullName('')
+    setEmail('')
+    setPhone('')
+    setCustomResponses({})
+    setScreenshot(null)
+    setScreenshotPreview(null)
+    setDmzpFeesPaid(null)
+    setDmzpCard(null)
+    setDmzpCardPreview(null)
+    setCompletedReg(null)
+    setSubmitError('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   // ── Loading / Error states ─────────────────────────────────────────────────
 
   if (loading) {
@@ -208,7 +228,13 @@ export function PublicTourView() {
           <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <h1 className="text-xl font-bold text-gray-900 mb-1">Tour not found</h1>
           <p className="text-gray-500 text-sm max-w-sm mx-auto">{error || 'This tour may have been removed or is no longer available.'}</p>
-          <Link to="/" className="inline-block mt-4 text-teal-600 hover:text-teal-700 text-sm font-semibold">← Go back to dashboard</Link>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="inline-block mt-4 text-teal-600 hover:text-teal-700 text-sm font-semibold"
+          >
+            ← Go back
+          </button>
         </div>
       </div>
     )
@@ -272,12 +298,13 @@ export function PublicTourView() {
                 <Ticket className="w-3.5 h-3.5" /> View Tour Ticket Pass
               </Link>
             )}
-            <Link
-              to="/"
+            <button
+              type="button"
+              onClick={handleResetForm}
               className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
             >
-              Return Home
-            </Link>
+              Back to Tour
+            </button>
           </div>
 
           <div className="mt-6 p-4 bg-gray-50 rounded-xl text-left text-sm space-y-1.5 border border-gray-100">
@@ -556,56 +583,111 @@ export function PublicTourView() {
                   <div className="mt-3 p-4 bg-amber-50/60 border border-amber-200 rounded-2xl">
                     <h4 className="text-sm font-bold text-amber-900 mb-1">Pay DMZP Membership Fee</h4>
                     <p className="text-xs text-amber-800 mb-3 leading-relaxed">
-                      Please pay the DMZP membership fee using the UPI ID below.
+                      Please pay the DMZP membership fee using the QR code or UPI ID below.
                       Your membership will be linked to your profile once payment is confirmed.
                     </p>
-                    {tour.upiId ? (
-                      <div className="bg-white rounded-xl p-3 border border-amber-200/80">
-                        <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
-                          <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
-                            {tour.upiId}
-                          </code>
-                          <button
-                            type="button"
-                            onClick={() => copyDmzpUpi(tour.upiId)}
-                            className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
-                            title="Copy UPI ID"
-                          >
-                            {copiedDmzp ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        {tour.upiQrImage && (
-                          <div className="flex justify-center mt-2">
-                            <img
-                              src={getMediaUrl(tour.upiQrImage)}
-                              alt="DMZP UPI QR"
-                              className="w-36 h-36 object-contain rounded-lg border border-gray-200"
-                            />
-                          </div>
+                    <div className="bg-white rounded-xl p-4 border border-amber-200/80 flex flex-col items-center text-center">
+                      {/* Membership Fee QR Code */}
+                      <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
+                        {tour.upiId && tour.upiQrImage ? (
+                          <img
+                            src={getMediaUrl(tour.upiQrImage)}
+                            alt="DMZP Membership UPI QR"
+                            className="w-36 h-36 object-contain rounded-lg"
+                          />
+                        ) : (
+                          <QRCode
+                            value={`upi://pay?pa=${encodeURIComponent(tour.upiId || 'dmzp@okhdfcbank')}&pn=DMZP+Membership&cu=INR&tn=DMZP+Membership+Fee`}
+                            size={144}
+                          />
                         )}
                       </div>
-                    ) : (
-                      <div className="bg-white rounded-xl p-3 border border-amber-200/80">
-                        <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Membership UPI ID:</span>
-                          <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
-                            dmzp@okhdfcbank
-                          </code>
-                          <button
-                            type="button"
-                            onClick={() => copyDmzpUpi('dmzp@okhdfcbank')}
-                            className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
-                            title="Copy UPI ID"
-                          >
-                            {copiedDmzp ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        <p className="text-xs text-amber-800 text-center mt-2 leading-relaxed">
-                          For this free tour, you can pay your DMZP membership fee to the UPI ID above or pay in person at the event registration desk.
-                        </p>
+                      <p className="text-[11px] text-gray-500 font-medium mb-3">Scan with GPay, PhonePe, Paytm or any UPI app</p>
+
+                      <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+                        <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                          {tour.upiId ? 'UPI ID:' : 'Membership UPI ID:'}
+                        </span>
+                        <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
+                          {tour.upiId || 'dmzp@okhdfcbank'}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => copyDmzpUpi(tour.upiId || 'dmzp@okhdfcbank')}
+                          className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
+                          title="Copy UPI ID"
+                        >
+                          {copiedDmzp ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                        </button>
                       </div>
-                    )}
+
+                      {!tour.upiId && (
+                        <p className="text-xs text-amber-800 text-center mt-2 leading-relaxed">
+                          For this free tour, you can scan the QR code above or pay in person at the event registration desk.
+                        </p>
+                      )}
+
+                      {/* Upload Box for Fee Payment Screenshot or Membership Card */}
+                      <div className="w-full mt-4 pt-3.5 border-t border-amber-200/60 text-left">
+                        <label className="block text-xs font-bold text-gray-800 mb-1">
+                          Upload Fee Payment Receipt / Screenshot or Card
+                        </label>
+                        <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+                          Already paid or just paid via UPI above? Upload your payment screenshot or DMZP card here so you don't need to wait for your physical card to be issued.
+                        </p>
+
+                        {dmzpCardPreview ? (
+                          <div className="relative rounded-xl border border-teal-200 bg-teal-50/40 p-3 flex items-center gap-3">
+                            <img
+                              src={dmzpCardPreview}
+                              alt="Fee payment proof preview"
+                              className="w-14 h-14 object-cover rounded-lg border border-teal-200 shadow-xs"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-900 truncate">{dmzpCard?.name}</p>
+                              <p className="text-[10px] text-gray-500">
+                                {dmzpCard ? `${(dmzpCard.size / 1024).toFixed(1)} KB` : ''}
+                              </p>
+                              <label className="inline-block mt-0.5 text-[11px] text-teal-700 hover:text-teal-800 font-semibold cursor-pointer underline focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
+                                Change file
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/gif"
+                                  className="sr-only"
+                                  onChange={(e) => handleDmzpCardChange(e.target.files?.[0] || null)}
+                                />
+                              </label>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDmzpCardChange(null)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white"
+                              title="Remove file"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center gap-1.5 p-4 border-2 border-dashed border-teal-200 hover:border-teal-400 bg-teal-50/20 hover:bg-teal-50/50 rounded-xl cursor-pointer transition-colors text-center focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
+                            <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
+                              <Upload className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-800">
+                                Click or drag to upload fee payment screenshot or card
+                              </p>
+                              <p className="text-[10px] text-gray-500 mt-0.5">JPG, PNG, WebP or GIF</p>
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif"
+                              className="sr-only"
+                              onChange={(e) => handleDmzpCardChange(e.target.files?.[0] || null)}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
                     <p className="text-[11px] text-amber-700 mt-2 italic text-center">
                       You can proceed with registration. Your DMZP membership status will be updated once payment is confirmed.
                     </p>
@@ -723,50 +805,91 @@ export function PublicTourView() {
               {/* Instructions */}
               <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-4">
                 <h4 className="text-sm font-bold text-amber-900 mb-1.5">How to complete payment:</h4>
-                <ol className="text-xs text-amber-800 space-y-1 list-decimal list-inside leading-relaxed">
+                <ol className="text-xs text-amber-800 space-y-1.5 list-decimal list-inside leading-relaxed">
                   <li>Scan the QR code or use the UPI ID in GPay / PhonePe / Paytm / BHIM.</li>
                   <li>Make payment of exactly <strong>₹{tour.price}</strong>.</li>
                   <li>Take a screenshot of your successful transaction receipt.</li>
                   <li><strong>Upload the payment screenshot below</strong> to verify your booking.</li>
+                  <li>Uploaded screenshot should be <strong>lower than 100 KB</strong> in size (compress before uploading if necessary).</li>
                 </ol>
               </div>
 
               {/* Payment Screenshot Upload (REQUIRED) */}
               <div>
-                <label className="block text-sm font-bold text-gray-800 mb-1.5">
-                  Payment Screenshot <span className="text-red-500">* (Required)</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-bold text-gray-800">
+                    Payment Screenshot <span className="text-red-500">* (Required)</span>
+                  </label>
+                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md">
+                    Limit: &lt; 100 KB
+                  </span>
+                </div>
 
-                {screenshotPreview ? (
-                  <div className="relative rounded-2xl border-2 border-teal-500/40 bg-teal-50/30 p-4 flex items-center gap-4">
-                    <img
-                      src={screenshotPreview}
-                      alt="Payment screenshot preview"
-                      className="w-20 h-20 object-cover rounded-xl border border-teal-200 shadow-sm"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{screenshot?.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {screenshot ? `${(screenshot.size / 1024).toFixed(1)} KB` : ''}
-                      </p>
-                      <label className="inline-block mt-1 text-xs text-teal-700 hover:text-teal-800 font-semibold cursor-pointer underline rounded focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
-                        Change image
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
-                          className="sr-only"
-                          onChange={(e) => handleScreenshotChange(e.target.files?.[0] || null)}
-                        />
-                      </label>
+                {dmzpCard && !screenshot && (
+                  <div className="mb-3 p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={dmzpCardPreview || ''}
+                        alt="Uploaded payment proof"
+                        className="w-10 h-10 object-cover rounded-lg border border-teal-200 shrink-0"
+                      />
+                      <div className="text-xs min-w-0">
+                        <p className="font-semibold text-teal-900 truncate">Payment screenshot uploaded</p>
+                        <p className="text-[11px] text-teal-700">Use this screenshot for tour verification as well?</p>
+                      </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleScreenshotChange(null)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white"
-                      title="Remove screenshot"
+                      onClick={() => handleScreenshotChange(dmzpCard)}
+                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shrink-0 shadow-xs transition-colors"
                     >
-                      <X className="w-5 h-5" />
+                      Use this screenshot
                     </button>
+                  </div>
+                )}
+
+                {screenshotPreview ? (
+                  <div>
+                    <div className="relative rounded-2xl border-2 border-teal-500/40 bg-teal-50/30 p-4 flex items-center gap-4">
+                      <img
+                        src={screenshotPreview}
+                        alt="Payment screenshot preview"
+                        className="w-20 h-20 object-cover rounded-xl border border-teal-200 shadow-sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{screenshot?.name}</p>
+                        <p className={`text-xs ${screenshot && screenshot.size > 100 * 1024 ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                          {screenshot ? `${(screenshot.size / 1024).toFixed(1)} KB` : ''}
+                          {screenshot && screenshot.size > 100 * 1024 ? ' (Exceeds 100 KB limit)' : ''}
+                        </p>
+                        <label className="inline-block mt-1 text-xs text-teal-700 hover:text-teal-800 font-semibold cursor-pointer underline rounded focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
+                          Change image
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="sr-only"
+                            onChange={(e) => handleScreenshotChange(e.target.files?.[0] || null)}
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleScreenshotChange(null)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white"
+                        title="Remove screenshot"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {screenshot && screenshot.size > 100 * 1024 && (
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                        <span>
+                          Screenshot file size is <strong>{(screenshot.size / 1024).toFixed(1)} KB</strong>. The upload screenshot should be lower than <strong>100 KB</strong>. Please compress or resize the screenshot.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/20 hover:bg-teal-50/40 rounded-2xl cursor-pointer transition-colors text-center focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
@@ -777,7 +900,7 @@ export function PublicTourView() {
                       <p className="text-sm font-semibold text-gray-800">
                         Click or drag to upload payment screenshot
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WebP or GIF up to 10MB</p>
+                      <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WebP or GIF (File size should be lower than 100 KB)</p>
                     </div>
                     <input
                       type="file"
