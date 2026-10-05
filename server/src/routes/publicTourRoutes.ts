@@ -59,9 +59,14 @@ export function extractFromCustomResponses(
   keywords: string[] = []
 ): string | undefined {
   if (!customResponses) return undefined
+
+  const isAddressSearch = keywords.some(kw => kw.includes('address') || kw === 'veng' || kw === 'khua')
+  const isExcluded = (s: string) => isAddressSearch && /pickup|drop|boarding|departure|meet|tour\s*location/i.test(s)
+
   for (const [key, val] of Object.entries(customResponses)) {
     if (val && typeof val === 'string' && val.trim()) {
       const lowerKey = key.toLowerCase()
+      if (isExcluded(lowerKey)) continue
       if (keywords.some(kw => lowerKey.includes(kw))) {
         return val.trim()
       }
@@ -69,10 +74,14 @@ export function extractFromCustomResponses(
   }
   if (fields) {
     for (const f of fields) {
-      if (f.label && keywords.some(kw => f.label.toLowerCase().includes(kw))) {
-        const val = customResponses[f.id]
-        if (val && typeof val === 'string' && val.trim()) {
-          return val.trim()
+      if (f.label) {
+        const lowerLabel = f.label.toLowerCase()
+        if (isExcluded(lowerLabel)) continue
+        if (keywords.some(kw => lowerLabel.includes(kw))) {
+          const val = customResponses[f.id]
+          if (val && typeof val === 'string' && val.trim()) {
+            return val.trim()
+          }
         }
       }
     }
@@ -231,14 +240,14 @@ router.post(
       return res.status(400).json(registrationResult)
     }
 
-    // If a DMZP membership fee was paid (receipt uploaded) or membership card provided, sync profile with database
-    if (dmzpCardUrl) {
+    // If a new DMZP membership fee was paid (receipt uploaded by registrant selecting 'no'), record new paid membership
+    if (parsed.data.dmzpFeesPaid === 'no' && dmzpCardUrl) {
       try {
         const customResp = parsed.data.customResponses || {}
         const finalInstitution = parsed.data.institution || extractFromCustomResponses(customResp, tour.customFormFields, ['institution', 'college', 'school', 'university', 'zirna in'])
         const finalCourse = parsed.data.course || extractFromCustomResponses(customResp, tour.customFormFields, ['course', 'subject', 'department', 'semester', 'degree', 'stream'])
         const finalBloodGroup = parsed.data.bloodGroup || extractFromCustomResponses(customResp, tour.customFormFields, ['blood'])
-        const finalAddress = parsed.data.address || extractFromCustomResponses(customResp, tour.customFormFields, ['address', 'veng', 'khua', 'city', 'location'])
+        const finalAddress = parsed.data.address || extractFromCustomResponses(customResp, tour.customFormFields, ['residential address', 'home address', 'permanent address', 'current address', 'membership address', 'address', 'veng', 'khua'])
 
         await memberController.recordPaidMembership({
           name: parsed.data.fullName,

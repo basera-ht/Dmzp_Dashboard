@@ -213,17 +213,31 @@ export const tourController = {
       // Also ensure DMZP membership is recorded if DMZP payment proof was provided
       if (updated.dmzpCardUrl) {
         const customResp = (updated.customResponses as Record<string, string>) || {}
-        memberController.recordPaidMembership({
-          name: updated.fullName,
-          email: updated.email,
-          phone: updated.phoneNumber,
-          institution: customResp.institution || customResp.college || null,
-          course: customResp.course || null,
-          bloodGroup: customResp.bloodGroup || customResp.blood || null,
-          address: customResp.address || null,
-        }).catch((err) =>
-          console.error('[TourController] Failed to record paid membership on verification:', err)
-        )
+        let syncSuccess = false
+        const MAX_SYNC_ATTEMPTS = 3
+        for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt++) {
+          try {
+            await memberController.recordPaidMembership({
+              name: updated.fullName,
+              email: updated.email,
+              phone: updated.phoneNumber,
+              institution: customResp.institution || customResp.college || null,
+              course: customResp.course || null,
+              bloodGroup: customResp.bloodGroup || customResp.blood || null,
+              address: customResp.address || null,
+            })
+            syncSuccess = true
+            break
+          } catch (err: any) {
+            console.error(`[TourController] Failed to record paid membership on verification (attempt ${attempt}/${MAX_SYNC_ATTEMPTS}):`, err?.message || err)
+            if (attempt < MAX_SYNC_ATTEMPTS) {
+              await new Promise((resolve) => setTimeout(resolve, 200 * attempt))
+            }
+          }
+        }
+        if (!syncSuccess) {
+          console.error(`[TourController] CRITICAL: Durable sync failed for DMZP membership for registration ${updated.id}, email: ${updated.email}`)
+        }
       }
     }
 

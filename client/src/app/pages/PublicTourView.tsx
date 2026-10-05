@@ -241,6 +241,10 @@ export function PublicTourView() {
     setDmzpFeesPaid(null)
     setDmzpCard(null)
     setDmzpCardPreview(null)
+    setDmzpInstitution('')
+    setDmzpCourse('')
+    setDmzpBloodGroup('')
+    setDmzpAddress('')
     setCompletedReg(null)
     setSubmitError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -628,9 +632,9 @@ export function PublicTourView() {
                       Your membership will be linked to your profile once payment is confirmed.
                     </p>
                     <div className="bg-white rounded-xl p-4 border border-amber-200/80 flex flex-col items-center text-center">
-                      <div className={`flex flex-wrap items-start justify-center ${tour.upiId2 ? 'gap-6' : 'gap-0'}`}>
+                      <div className={`flex flex-wrap items-start justify-center ${tour.upiId && tour.upiId2 ? 'gap-6' : 'gap-0'}`}>
                         {/* Primary UPI */}
-                        {tour.upiId ? (
+                        {tour.upiId && (
                           <div className="flex flex-col items-center">
                             {tour.upiId2 && (
                               <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-2 bg-teal-100 px-2.5 py-0.5 rounded-full">
@@ -662,12 +666,6 @@ export function PublicTourView() {
                                 {copiedDmzp ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center">
-                            <p className="text-xs text-amber-800 text-center py-2 leading-relaxed">
-                              For this tour, you can pay your DMZP membership fee in person at the event registration desk.
-                            </p>
                           </div>
                         )}
 
@@ -704,9 +702,18 @@ export function PublicTourView() {
                             </div>
                           </div>
                         )}
+
+                        {/* When both UPI IDs are absent */}
+                        {!tour.upiId && !tour.upiId2 && (
+                          <div className="flex flex-col items-center">
+                            <p className="text-xs text-amber-800 text-center py-2 leading-relaxed">
+                              For this tour, you can pay your DMZP membership fee in person at the event registration desk.
+                            </p>
+                          </div>
+                        )}
                       </div>
 
-                      {tour.upiId && (
+                      {(tour.upiId || tour.upiId2) && (
                         <p className="text-[11px] text-gray-500 font-medium mt-2">
                           Scan with GPay, PhonePe, Paytm or any UPI app
                         </p>
@@ -772,78 +779,80 @@ export function PublicTourView() {
                           </label>
                         )}
                       </div>
-
-                      {/* Membership Profile Details for New Member */}
-                      <div className="w-full mt-4 pt-3.5 border-t border-amber-200/60 text-left">
-                        <label className="block text-xs font-bold text-gray-800 mb-1">
-                          Membership Profile Details <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
-                        </label>
-                        <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
-                          Provide your details below to link them with your DMZP member profile and membership card.
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-                              College / Institution
-                            </label>
-                            <input
-                              type="text"
-                              value={dmzpInstitution}
-                              onChange={(e) => setDmzpInstitution(e.target.value)}
-                              placeholder="e.g. Pachhunga University College"
-                              className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-                              Course / Department
-                            </label>
-                            <input
-                              type="text"
-                              value={dmzpCourse}
-                              onChange={(e) => setDmzpCourse(e.target.value)}
-                              placeholder="e.g. BSc Geology"
-                              className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-                              Blood Group
-                            </label>
-                            <select
-                              value={dmzpBloodGroup}
-                              onChange={(e) => setDmzpBloodGroup(e.target.value)}
-                              className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-                            >
-                              <option value="">Select blood group</option>
-                              <option value="A+">A+</option>
-                              <option value="A-">A-</option>
-                              <option value="B+">B+</option>
-                              <option value="B-">B-</option>
-                              <option value="AB+">AB+</option>
-                              <option value="AB-">AB-</option>
-                              <option value="O+">O+</option>
-                              <option value="O-">O-</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-                              Address / Locality
-                            </label>
-                            <input
-                              type="text"
-                              value={dmzpAddress}
-                              onChange={(e) => setDmzpAddress(e.target.value)}
-                              placeholder="e.g. Khatla, Aizawl"
-                              className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
                     <p className="text-[11px] text-amber-700 mt-2 italic text-center">
                       You can proceed with registration. Your DMZP membership status will be updated once payment is confirmed.
                     </p>
+                  </div>
+                )}
+
+                {/* Optional Membership Profile Details (Available whether Yes or No is selected) */}
+                {dmzpFeesPaid !== null && (
+                  <div className="mt-3 p-4 bg-gray-50/80 border border-gray-200/80 rounded-2xl text-left">
+                    <label className="block text-xs font-bold text-gray-800 mb-1">
+                      Membership Profile Details <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                    </label>
+                    <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+                      Provide your details below to link or update them with your DMZP member profile and membership card.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                          College / Institution
+                        </label>
+                        <input
+                          type="text"
+                          value={dmzpInstitution}
+                          onChange={(e) => setDmzpInstitution(e.target.value)}
+                          placeholder="e.g. Pachhunga University College"
+                          className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                          Course / Department
+                        </label>
+                        <input
+                          type="text"
+                          value={dmzpCourse}
+                          onChange={(e) => setDmzpCourse(e.target.value)}
+                          placeholder="e.g. BSc Geology"
+                          className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                          Blood Group
+                        </label>
+                        <select
+                          value={dmzpBloodGroup}
+                          onChange={(e) => setDmzpBloodGroup(e.target.value)}
+                          className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                        >
+                          <option value="">Select blood group</option>
+                          <option value="A+">A+</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B-">B-</option>
+                          <option value="AB+">AB+</option>
+                          <option value="AB-">AB-</option>
+                          <option value="O+">O+</option>
+                          <option value="O-">O-</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                          Address / Locality
+                        </label>
+                        <input
+                          type="text"
+                          value={dmzpAddress}
+                          onChange={(e) => setDmzpAddress(e.target.value)}
+                          placeholder="e.g. Khatla, Aizawl"
+                          className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

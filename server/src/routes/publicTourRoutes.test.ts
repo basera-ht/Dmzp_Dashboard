@@ -40,4 +40,38 @@ describe('PublicTourRoutes - DMZP Membership Helpers', () => {
     const result = extractFromCustomResponses(responses, [], ['institution', 'college'])
     expect(result).toBeUndefined()
   })
+
+  it('avoids matching generic pickup location fields for address', () => {
+    const fields = [
+      { id: 'f_pickup', label: 'Pickup Location', required: true, type: 'text' },
+      { id: 'f_drop', label: 'Drop-off Location', required: false, type: 'text' },
+      { id: 'f_addr', label: 'Residential Address in Delhi', required: false, type: 'text' },
+    ]
+    const responses = {
+      f_pickup: 'Kashmiri Gate ISBT',
+      f_drop: 'Majnu Ka Tilla',
+      f_addr: 'A-12, Christian Colony, Patel Nagar',
+    }
+    const result = extractFromCustomResponses(
+      responses,
+      fields,
+      ['residential address', 'home address', 'permanent address', 'current address', 'membership address', 'address', 'veng', 'khua']
+    )
+    expect(result).toBe('A-12, Christian Colony, Patel Nagar')
+  })
+
+  it('ignores pickup location even if it has address in keyword search when no residential address provided', () => {
+    const fields = [
+      { id: 'f_pickup', label: 'Tour Departure Pickup Location', required: true, type: 'text' },
+    ]
+    const responses = {
+      f_pickup: 'New Delhi Railway Station',
+    }
+    const result = extractFromCustomResponses(
+      responses,
+      fields,
+      ['residential address', 'home address', 'address', 'veng', 'khua']
+    )
+    expect(result).toBeUndefined()
+  })
 })

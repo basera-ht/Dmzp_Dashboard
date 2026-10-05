@@ -116,12 +116,12 @@ export const memberController = {
       const updated = await db
         .update(members)
         .set({
-          name: data.name?.trim() || current.name,
-          phone: data.phone?.trim() || current.phone,
-          institution: data.institution?.trim() || current.institution,
-          course: data.course?.trim() || current.course,
-          address: data.address?.trim() || current.address,
-          bloodGroup: data.bloodGroup?.trim() || current.bloodGroup,
+          name: current.name || data.name?.trim(),
+          phone: current.phone || data.phone?.trim() || null,
+          institution: current.institution || data.institution?.trim() || null,
+          course: current.course || data.course?.trim() || null,
+          address: current.address || data.address?.trim() || null,
+          bloodGroup: current.bloodGroup || data.bloodGroup?.trim() || null,
           fees: 'yes',
           updatedAt: new Date(),
         })
