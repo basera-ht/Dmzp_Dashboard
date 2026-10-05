@@ -2,6 +2,7 @@ import { eq, sql, desc, and } from 'drizzle-orm'
 import { db } from '../database/index.js'
 import { tours, tourRegistrations } from '../models/index.js'
 import { sendTourTicketEmail, generateUniqueTicketCode, ensureRegistrationTicketCode } from '../services/tourTicketService.js'
+import { memberController } from './memberController.js'
 import type { NewTour, NewTourRegistration, Tour, TourRegistration } from '../models/index.js'
 import type { ApiResponse, PaginatedResponse } from '../types/index.js'
 
@@ -207,6 +208,22 @@ export const tourController = {
           .catch((err) =>
             console.error('[TourController] Approval ticket email unexpected error:', err)
           )
+      }
+
+      // Also ensure DMZP membership is recorded if DMZP payment proof was provided
+      if (updated.dmzpCardUrl) {
+        const customResp = (updated.customResponses as Record<string, string>) || {}
+        memberController.recordPaidMembership({
+          name: updated.fullName,
+          email: updated.email,
+          phone: updated.phoneNumber,
+          institution: customResp.institution || customResp.college || null,
+          course: customResp.course || null,
+          bloodGroup: customResp.bloodGroup || customResp.blood || null,
+          address: customResp.address || null,
+        }).catch((err) =>
+          console.error('[TourController] Failed to record paid membership on verification:', err)
+        )
       }
     }
 

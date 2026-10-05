@@ -9,8 +9,6 @@ import {
 import { API_BASE_URL, getMediaUrl } from '../../lib/api'
 import type { Tour } from './Tours'
 
-const DMZP_MEMBERSHIP_UPI_ID = 'dmzp@okhdfcbank'
-
 function formatDate(d: string) {
   try {
     return new Date(d).toLocaleDateString('en-IN', {
@@ -55,12 +53,17 @@ export function PublicTourView() {
   const [copied, setCopied] = useState(false)
   const [copied2, setCopied2] = useState(false)
   const [copiedDmzp, setCopiedDmzp] = useState(false)
+  const [copiedDmzp2, setCopiedDmzp2] = useState(false)
   const [completedReg, setCompletedReg] = useState<{ id: number; ticketCode?: string } | null>(null)
 
   // DMZP membership fee state
   const [dmzpFeesPaid, setDmzpFeesPaid] = useState<'yes' | 'no' | null>(null)
   const [dmzpCard, setDmzpCard] = useState<File | null>(null)
   const [dmzpCardPreview, setDmzpCardPreview] = useState<string | null>(null)
+  const [dmzpInstitution, setDmzpInstitution] = useState('')
+  const [dmzpCourse, setDmzpCourse] = useState('')
+  const [dmzpBloodGroup, setDmzpBloodGroup] = useState('')
+  const [dmzpAddress, setDmzpAddress] = useState('')
 
   useEffect(() => {
     if (!slug) return
@@ -120,11 +123,28 @@ export function PublicTourView() {
     }
   }
 
-  const copyDmzpUpi = (customUpi?: string) => {
-    const target = customUpi || DMZP_MEMBERSHIP_UPI_ID
-    navigator.clipboard.writeText(target)
-    setCopiedDmzp(true)
-    setTimeout(() => setCopiedDmzp(false), 2000)
+  const dmzpDeepLink1 = tour?.upiId
+    ? `upi://pay?pa=${encodeURIComponent(tour.upiId)}&pn=Tour+Organizer&cu=INR&tn=DMZP+Membership+Fee`
+    : ''
+
+  const dmzpDeepLink2 = tour?.upiId2
+    ? `upi://pay?pa=${encodeURIComponent(tour.upiId2)}&pn=Tour+Organizer&cu=INR&tn=DMZP+Membership+Fee`
+    : ''
+
+  const copyDmzpUpi = () => {
+    if (tour?.upiId) {
+      navigator.clipboard.writeText(tour.upiId)
+      setCopiedDmzp(true)
+      setTimeout(() => setCopiedDmzp(false), 2000)
+    }
+  }
+
+  const copyDmzpUpi2 = () => {
+    if (tour?.upiId2) {
+      navigator.clipboard.writeText(tour.upiId2)
+      setCopiedDmzp2(true)
+      setTimeout(() => setCopiedDmzp2(false), 2000)
+    }
   }
 
   const isEmailValid = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
@@ -174,6 +194,18 @@ export function PublicTourView() {
       }
       if (dmzpCard) {
         formData.append('dmzpCard', dmzpCard)
+      }
+      if (dmzpInstitution.trim()) {
+        formData.append('dmzpInstitution', dmzpInstitution.trim())
+      }
+      if (dmzpCourse.trim()) {
+        formData.append('dmzpCourse', dmzpCourse.trim())
+      }
+      if (dmzpBloodGroup.trim()) {
+        formData.append('dmzpBloodGroup', dmzpBloodGroup.trim())
+      }
+      if (dmzpAddress.trim()) {
+        formData.append('dmzpAddress', dmzpAddress.trim())
       }
 
       const regData = await fetch(`${API_BASE_URL}/public/tours/t/${slug}/register`, {
@@ -596,35 +628,87 @@ export function PublicTourView() {
                       Your membership will be linked to your profile once payment is confirmed.
                     </p>
                     <div className="bg-white rounded-xl p-4 border border-amber-200/80 flex flex-col items-center text-center">
-                      {/* Membership Fee QR Code */}
-                      <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
-                        <QRCode
-                          value={`upi://pay?pa=${encodeURIComponent(DMZP_MEMBERSHIP_UPI_ID)}&pn=DMZP+Membership&cu=INR&tn=DMZP+Membership+Fee`}
-                          size={144}
-                        />
-                      </div>
-                      <p className="text-[11px] text-gray-500 font-medium mb-3">Scan with GPay, PhonePe, Paytm or any UPI app</p>
+                      <div className={`flex flex-wrap items-start justify-center ${tour.upiId2 ? 'gap-6' : 'gap-0'}`}>
+                        {/* Primary UPI */}
+                        {tour.upiId ? (
+                          <div className="flex flex-col items-center">
+                            {tour.upiId2 && (
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-2 bg-teal-100 px-2.5 py-0.5 rounded-full">
+                                Primary Account
+                              </div>
+                            )}
+                            <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
+                              {tour.upiQrImage ? (
+                                <img
+                                  src={getMediaUrl(tour.upiQrImage)}
+                                  alt="Primary UPI QR"
+                                  className="w-36 h-36 object-contain rounded-lg"
+                                />
+                              ) : (
+                                <QRCode value={dmzpDeepLink1} size={144} />
+                              )}
+                            </div>
+                            <div className="flex items-center justify-center gap-2 mb-1">
+                              <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
+                              <code className="bg-amber-50 px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-gray-900 border border-amber-200">
+                                {tour.upiId}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={copyDmzpUpi}
+                                className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
+                                title="Copy UPI ID"
+                              >
+                                {copiedDmzp ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <p className="text-xs text-amber-800 text-center py-2 leading-relaxed">
+                              For this tour, you can pay your DMZP membership fee in person at the event registration desk.
+                            </p>
+                          </div>
+                        )}
 
-                      <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-                        <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                          Membership UPI ID:
-                        </span>
-                        <code className="bg-amber-50 px-3 py-1 rounded-lg text-sm font-mono font-bold text-gray-900 border border-amber-200">
-                          {DMZP_MEMBERSHIP_UPI_ID}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={() => copyDmzpUpi(DMZP_MEMBERSHIP_UPI_ID)}
-                          className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
-                          title="Copy UPI ID"
-                        >
-                          {copiedDmzp ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                        </button>
+                        {/* Secondary UPI (Optional) */}
+                        {tour.upiId2 && (
+                          <div className="flex flex-col items-center">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-2 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                              Backup Account
+                            </div>
+                            <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
+                              {tour.upiQrImage2 ? (
+                                <img
+                                  src={getMediaUrl(tour.upiQrImage2)}
+                                  alt="Backup UPI QR"
+                                  className="w-36 h-36 object-contain rounded-lg"
+                                />
+                              ) : (
+                                <QRCode value={dmzpDeepLink2} size={144} />
+                              )}
+                            </div>
+                            <div className="flex items-center justify-center gap-2 mb-1">
+                              <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
+                              <code className="bg-amber-50 px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-gray-900 border border-amber-200">
+                                {tour.upiId2}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={copyDmzpUpi2}
+                                className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
+                                title="Copy Backup UPI ID"
+                              >
+                                {copiedDmzp2 ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {!tour.upiId && (
-                        <p className="text-xs text-amber-800 text-center mt-2 leading-relaxed">
-                          For this free tour, you can scan the QR code above or pay in person at the event registration desk.
+                      {tour.upiId && (
+                        <p className="text-[11px] text-gray-500 font-medium mt-2">
+                          Scan with GPay, PhonePe, Paytm or any UPI app
                         </p>
                       )}
 
@@ -687,6 +771,74 @@ export function PublicTourView() {
                             />
                           </label>
                         )}
+                      </div>
+
+                      {/* Membership Profile Details for New Member */}
+                      <div className="w-full mt-4 pt-3.5 border-t border-amber-200/60 text-left">
+                        <label className="block text-xs font-bold text-gray-800 mb-1">
+                          Membership Profile Details <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                        </label>
+                        <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+                          Provide your details below to link them with your DMZP member profile and membership card.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                              College / Institution
+                            </label>
+                            <input
+                              type="text"
+                              value={dmzpInstitution}
+                              onChange={(e) => setDmzpInstitution(e.target.value)}
+                              placeholder="e.g. Pachhunga University College"
+                              className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                              Course / Department
+                            </label>
+                            <input
+                              type="text"
+                              value={dmzpCourse}
+                              onChange={(e) => setDmzpCourse(e.target.value)}
+                              placeholder="e.g. BSc Geology"
+                              className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                              Blood Group
+                            </label>
+                            <select
+                              value={dmzpBloodGroup}
+                              onChange={(e) => setDmzpBloodGroup(e.target.value)}
+                              className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                            >
+                              <option value="">Select blood group</option>
+                              <option value="A+">A+</option>
+                              <option value="A-">A-</option>
+                              <option value="B+">B+</option>
+                              <option value="B-">B-</option>
+                              <option value="AB+">AB+</option>
+                              <option value="AB-">AB-</option>
+                              <option value="O+">O+</option>
+                              <option value="O-">O-</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                              Address / Locality
+                            </label>
+                            <input
+                              type="text"
+                              value={dmzpAddress}
+                              onChange={(e) => setDmzpAddress(e.target.value)}
+                              placeholder="e.g. Khatla, Aizawl"
+                              className="w-full text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <p className="text-[11px] text-amber-700 mt-2 italic text-center">

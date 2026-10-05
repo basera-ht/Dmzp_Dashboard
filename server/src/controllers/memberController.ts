@@ -3,6 +3,7 @@ import { db } from '../database/index.js'
 import { members, chapters, hiddenMembers, membershipCardLogs } from '../models/index.js'
 import type { NewMember } from '../models/index.js'
 import type { ApiResponse, PaginatedResponse } from '../types/index.js'
+import { clearCache } from '../services/googleSheets.js'
 
 export const memberController = {
   async getAll(page = 1, limit = 10, search?: string): Promise<ApiResponse<PaginatedResponse<any>>> {
@@ -95,6 +96,61 @@ export const memberController = {
     }
     const result = await db.insert(members).values(insertData).returning()
     return { success: true, data: result[0] }
+  },
+
+  async recordPaidMembership(data: {
+    name: string
+    email: string
+    phone?: string | null
+    institution?: string | null
+    course?: string | null
+    address?: string | null
+    bloodGroup?: string | null
+  }): Promise<ApiResponse<any>> {
+    const email = data.email.trim().toLowerCase()
+    await db.delete(hiddenMembers).where(eq(hiddenMembers.email, email)).catch(() => {})
+
+    const existing = await db.select().from(members).where(eq(members.email, email)).limit(1)
+    if (existing.length > 0) {
+      const current = existing[0]
+      const updated = await db
+        .update(members)
+        .set({
+          name: data.name?.trim() || current.name,
+          phone: data.phone?.trim() || current.phone,
+          institution: data.institution?.trim() || current.institution,
+          course: data.course?.trim() || current.course,
+          address: data.address?.trim() || current.address,
+          bloodGroup: data.bloodGroup?.trim() || current.bloodGroup,
+          fees: 'yes',
+          updatedAt: new Date(),
+        })
+        .where(eq(members.id, current.id))
+        .returning()
+
+      clearCache()
+      return { success: true, data: updated[0] }
+    }
+
+    const inserted = await db
+      .insert(members)
+      .values({
+        name: data.name.trim(),
+        email,
+        phone: data.phone?.trim() || null,
+        institution: data.institution?.trim() || null,
+        course: data.course?.trim() || null,
+        address: data.address?.trim() || null,
+        bloodGroup: data.bloodGroup?.trim() || null,
+        fees: 'yes',
+        memberType: 'Student',
+        status: 'Active',
+        joinDate: new Date(),
+      })
+      .returning()
+
+    clearCache()
+    return { success: true, data: inserted[0] }
   },
 
   async update(id: number, data: Partial<NewMember>): Promise<ApiResponse<any>> {

@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
 import multer from 'multer'
 import { tourController } from '../controllers/tourController.js'
+import { memberController } from '../controllers/memberController.js'
 import { uploadFileToS3 } from '../services/s3Service.js'
 import { generateTourTicketPdfBuffer } from '../services/tourTicketService.js'
 import { asyncHandler } from '../middleware/index.js'
@@ -52,6 +53,33 @@ if (regCleanupTimer.unref) {
   regCleanupTimer.unref()
 }
 
+export function extractFromCustomResponses(
+  customResponses?: Record<string, string>,
+  fields?: any[] | null,
+  keywords: string[] = []
+): string | undefined {
+  if (!customResponses) return undefined
+  for (const [key, val] of Object.entries(customResponses)) {
+    if (val && typeof val === 'string' && val.trim()) {
+      const lowerKey = key.toLowerCase()
+      if (keywords.some(kw => lowerKey.includes(kw))) {
+        return val.trim()
+      }
+    }
+  }
+  if (fields) {
+    for (const f of fields) {
+      if (f.label && keywords.some(kw => f.label.toLowerCase().includes(kw))) {
+        const val = customResponses[f.id]
+        if (val && typeof val === 'string' && val.trim()) {
+          return val.trim()
+        }
+      }
+    }
+  }
+  return undefined
+}
+
 const registrationSchema = z.object({
   fullName: z.string().trim().min(1, 'Name is required').max(255),
   email: z.string().trim().email('Invalid email').max(255),
@@ -59,6 +87,10 @@ const registrationSchema = z.object({
   customResponses: z.record(z.string(), z.string()).optional(),
   upiTransactionId: z.string().trim().max(100).optional(),
   dmzpFeesPaid: z.enum(['yes', 'no']),
+  institution: z.string().trim().max(255).optional(),
+  course: z.string().trim().max(255).optional(),
+  bloodGroup: z.string().trim().max(20).optional(),
+  address: z.string().trim().max(1000).optional(),
 })
 
 const screenshotUpload = multer({
@@ -116,6 +148,10 @@ router.post(
         customResponses: req.body.customResponses ? JSON.parse(req.body.customResponses) : {},
         upiTransactionId: req.body.upiTransactionId || undefined,
         dmzpFeesPaid: req.body.dmzpFeesPaid,
+        institution: req.body.institution || req.body.dmzpInstitution || undefined,
+        course: req.body.course || req.body.dmzpCourse || undefined,
+        bloodGroup: req.body.bloodGroup || req.body.dmzpBloodGroup || undefined,
+        address: req.body.address || req.body.dmzpAddress || undefined,
       }
     } catch {
       return res.status(400).json({ success: false, error: 'Invalid form data' })
@@ -193,6 +229,29 @@ router.post(
 
     if (!registrationResult.success) {
       return res.status(400).json(registrationResult)
+    }
+
+    // If a DMZP membership fee was paid (receipt uploaded) or membership card provided, sync profile with database
+    if (dmzpCardUrl) {
+      try {
+        const customResp = parsed.data.customResponses || {}
+        const finalInstitution = parsed.data.institution || extractFromCustomResponses(customResp, tour.customFormFields, ['institution', 'college', 'school', 'university', 'zirna in'])
+        const finalCourse = parsed.data.course || extractFromCustomResponses(customResp, tour.customFormFields, ['course', 'subject', 'department', 'semester', 'degree', 'stream'])
+        const finalBloodGroup = parsed.data.bloodGroup || extractFromCustomResponses(customResp, tour.customFormFields, ['blood'])
+        const finalAddress = parsed.data.address || extractFromCustomResponses(customResp, tour.customFormFields, ['address', 'veng', 'khua', 'city', 'location'])
+
+        await memberController.recordPaidMembership({
+          name: parsed.data.fullName,
+          email: parsed.data.email,
+          phone: parsed.data.phoneNumber,
+          institution: finalInstitution || null,
+          course: finalCourse || null,
+          bloodGroup: finalBloodGroup || null,
+          address: finalAddress || null,
+        })
+      } catch (err) {
+        console.error('[PublicTour] Error recording paid DMZP membership:', err)
+      }
     }
 
     res.status(201).json(registrationResult)
