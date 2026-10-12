@@ -10,6 +10,8 @@ export default async function handler(req: Request, res: Response) {
   if (!initPromise) {
     initPromise = ensureTables().catch((err) => {
       console.error('ensureTables initialization error:', err)
+      initPromise = null
+      throw err
     })
   }
   await initPromise
