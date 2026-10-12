@@ -81,6 +81,11 @@ export function PublicTourView() {
   const handleScreenshotChange = (file: File | null) => {
     setScreenshot(file)
     if (file) {
+      if (file.size > 100 * 1024) {
+        setSubmitError(`Payment screenshot size is ${(file.size / 1024).toFixed(1)} KB. File size must be less than 100 KB.`)
+      } else {
+        setSubmitError('')
+      }
       const url = URL.createObjectURL(file)
       setScreenshotPreview(url)
     } else {
@@ -92,6 +97,11 @@ export function PublicTourView() {
   const handleDmzpCardChange = (file: File | null) => {
     setDmzpCard(file)
     if (file) {
+      if (file.size > 100 * 1024) {
+        setSubmitError(`Uploaded file size is ${(file.size / 1024).toFixed(1)} KB. File size must be less than 100 KB.`)
+      } else {
+        setSubmitError('')
+      }
       const url = URL.createObjectURL(file)
       setDmzpCardPreview(url)
     } else {
@@ -159,6 +169,8 @@ export function PublicTourView() {
     if (dmzpFeesPaid === null) return false
     // If they said yes, they must upload their DMZP card
     if (dmzpFeesPaid === 'yes' && !dmzpCard) return false
+    // Any uploaded DMZP card or fee receipt must be <= 100 KB
+    if (dmzpCard && dmzpCard.size > 100 * 1024) return false
     return true
   }
 
@@ -177,6 +189,10 @@ export function PublicTourView() {
     }
     if (dmzpFeesPaid === 'yes' && !dmzpCard) {
       setSubmitError('Please upload your DMZP card to proceed.')
+      return
+    }
+    if (dmzpCard && dmzpCard.size > 100 * 1024) {
+      setSubmitError(`Uploaded file size is ${(dmzpCard.size / 1024).toFixed(1)} KB. File size must be less than 100 KB.`)
       return
     }
 
@@ -577,33 +593,50 @@ export function PublicTourView() {
                       Please upload a photo or screenshot of your DMZP membership card as proof.
                     </p>
                     {dmzpCardPreview ? (
-                      <div className="relative rounded-2xl border-2 border-green-400/40 bg-green-50/30 p-4 flex items-center gap-4">
-                        <img
-                          src={dmzpCardPreview}
-                          alt="DMZP Card preview"
-                          className="w-20 h-20 object-cover rounded-xl border border-green-200 shadow-sm"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{dmzpCard?.name}</p>
-                          <p className="text-xs text-gray-500">{dmzpCard ? (dmzpCard.size / 1024).toFixed(1) + ' KB' : ''}</p>
-                          <label className="inline-block mt-1 text-xs text-green-700 hover:text-green-800 font-semibold cursor-pointer underline">
-                            Change image
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp,image/gif"
-                              className="sr-only"
-                              onChange={(e) => handleDmzpCardChange(e.target.files?.[0] || null)}
-                            />
-                          </label>
+                      <div>
+                        <div className="relative rounded-2xl border-2 border-green-400/40 bg-green-50/30 p-4 flex items-center gap-4">
+                          <img
+                            src={dmzpCardPreview}
+                            alt="DMZP Card preview"
+                            className="w-20 h-20 object-cover rounded-xl border border-green-200 shadow-sm"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{dmzpCard?.name}</p>
+                            <p className={`text-xs ${dmzpCard && dmzpCard.size > 100 * 1024 ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                              {dmzpCard ? (dmzpCard.size / 1024).toFixed(1) + ' KB' : ''}
+                              {dmzpCard && dmzpCard.size > 100 * 1024 ? ' (Exceeds 100 KB limit)' : ''}
+                            </p>
+                            <label className="inline-block mt-1 text-xs text-green-700 hover:text-green-800 font-semibold cursor-pointer underline">
+                              Change image
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                className="sr-only"
+                                onChange={(e) => {
+                                  handleDmzpCardChange(e.target.files?.[0] || null)
+                                  e.target.value = ''
+                                }}
+                              />
+                            </label>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDmzpCardChange(null)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white"
+                            title="Remove card"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDmzpCardChange(null)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white"
-                          title="Remove card"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
+
+                        {dmzpCard && dmzpCard.size > 100 * 1024 && (
+                          <div className="mt-2.5 p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                            <span>
+                              DMZP card file size is <strong>{(dmzpCard.size / 1024).toFixed(1)} KB</strong>. Uploaded file must be lower than <strong>100 KB</strong>. Please compress or resize the file.
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <label className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-green-300 hover:border-green-500 bg-green-50/20 hover:bg-green-50/40 rounded-2xl cursor-pointer transition-colors text-center focus-within:ring-2 focus-within:ring-green-500 focus-within:outline-none">
@@ -618,7 +651,10 @@ export function PublicTourView() {
                           type="file"
                           accept="image/jpeg,image/png,image/webp,image/gif"
                           className="sr-only"
-                          onChange={(e) => handleDmzpCardChange(e.target.files?.[0] || null)}
+                          onChange={(e) => {
+                            handleDmzpCardChange(e.target.files?.[0] || null)
+                            e.target.value = ''
+                          }}
                         />
                       </label>
                     )}
@@ -733,35 +769,50 @@ export function PublicTourView() {
                         </p>
 
                         {dmzpCardPreview ? (
-                          <div className="relative rounded-xl border border-teal-200 bg-teal-50/40 p-3 flex items-center gap-3">
-                            <img
-                              src={dmzpCardPreview}
-                              alt="Fee payment proof preview"
-                              className="w-14 h-14 object-cover rounded-lg border border-teal-200 shadow-xs"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-gray-900 truncate">{dmzpCard?.name}</p>
-                              <p className="text-[10px] text-gray-500">
-                                {dmzpCard ? `${(dmzpCard.size / 1024).toFixed(1)} KB` : ''}
-                              </p>
-                              <label className="inline-block mt-0.5 text-[11px] text-teal-700 hover:text-teal-800 font-semibold cursor-pointer underline focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
-                                Change file
-                                <input
-                                  type="file"
-                                  accept="image/jpeg,image/png,image/webp,image/gif"
-                                  className="sr-only"
-                                  onChange={(e) => handleDmzpCardChange(e.target.files?.[0] || null)}
-                                />
-                              </label>
+                          <div>
+                            <div className="relative rounded-xl border border-teal-200 bg-teal-50/40 p-3 flex items-center gap-3">
+                              <img
+                                src={dmzpCardPreview}
+                                alt="Fee payment proof preview"
+                                className="w-14 h-14 object-cover rounded-lg border border-teal-200 shadow-xs"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-gray-900 truncate">{dmzpCard?.name}</p>
+                                <p className={`text-[10px] ${dmzpCard && dmzpCard.size > 100 * 1024 ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                                  {dmzpCard ? `${(dmzpCard.size / 1024).toFixed(1)} KB` : ''}
+                                  {dmzpCard && dmzpCard.size > 100 * 1024 ? ' (Exceeds 100 KB limit)' : ''}
+                                </p>
+                                <label className="inline-block mt-0.5 text-[11px] text-teal-700 hover:text-teal-800 font-semibold cursor-pointer underline focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
+                                  Change file
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/gif"
+                                    className="sr-only"
+                                    onChange={(e) => {
+                                      handleDmzpCardChange(e.target.files?.[0] || null)
+                                      e.target.value = ''
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDmzpCardChange(null)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white"
+                                title="Remove file"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDmzpCardChange(null)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white"
-                              title="Remove file"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+
+                            {dmzpCard && dmzpCard.size > 100 * 1024 && (
+                              <div className="mt-2.5 p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                                <span>
+                                  File size is <strong>{(dmzpCard.size / 1024).toFixed(1)} KB</strong>. Uploaded file must be lower than <strong>100 KB</strong>. Please compress or resize the file.
+                                </span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <label className="flex flex-col items-center justify-center gap-1.5 p-4 border-2 border-dashed border-teal-200 hover:border-teal-400 bg-teal-50/20 hover:bg-teal-50/50 rounded-xl cursor-pointer transition-colors text-center focus-within:ring-2 focus-within:ring-teal-500 focus-within:outline-none">
@@ -772,13 +823,16 @@ export function PublicTourView() {
                               <p className="text-xs font-semibold text-gray-800">
                                 Click or drag to upload fee payment screenshot or card
                               </p>
-                              <p className="text-[10px] text-gray-500 mt-0.5">JPG, PNG, WebP or GIF</p>
+                              <p className="text-[10px] text-gray-500 mt-0.5">JPG, PNG, WebP or GIF up to 100KB</p>
                             </div>
                             <input
                               type="file"
                               accept="image/jpeg,image/png,image/webp,image/gif"
                               className="sr-only"
-                              onChange={(e) => handleDmzpCardChange(e.target.files?.[0] || null)}
+                              onChange={(e) => {
+                                handleDmzpCardChange(e.target.files?.[0] || null)
+                                e.target.value = ''
+                              }}
                             />
                           </label>
                         )}
@@ -1011,7 +1065,10 @@ export function PublicTourView() {
                             type="file"
                             accept="image/jpeg,image/png,image/webp,image/gif"
                             className="sr-only"
-                            onChange={(e) => handleScreenshotChange(e.target.files?.[0] || null)}
+                            onChange={(e) => {
+                              handleScreenshotChange(e.target.files?.[0] || null)
+                              e.target.value = ''
+                            }}
                           />
                         </label>
                       </div>
@@ -1049,7 +1106,10 @@ export function PublicTourView() {
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"
                       className="sr-only"
-                      onChange={(e) => handleScreenshotChange(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        handleScreenshotChange(e.target.files?.[0] || null)
+                        e.target.value = ''
+                      }}
                     />
                   </label>
                 )}

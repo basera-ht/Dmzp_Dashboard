@@ -263,6 +263,10 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
   )
 
   const handleCoverUpload = async (file: File) => {
+    if (file.size > 100 * 1024) {
+      setError('File size must be less than 100KB')
+      return
+    }
     setUploadingCover(true)
     setError('')
     try {
@@ -374,7 +378,11 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={(e) => e.target.files?.[0] && handleCoverUpload(e.target.files[0])}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleCoverUpload(file)
+                            e.target.value = ''
+                          }}
                         />
                       </label>
                       <button
@@ -402,7 +410,7 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
                           Upload photo of your tour place
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          High-resolution JPG, PNG or WebP recommended
+                          JPG, PNG or WebP up to 100KB
                         </p>
                       </>
                     )}
@@ -411,7 +419,11 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
                       accept="image/*"
                       className="hidden"
                       disabled={uploadingCover}
-                      onChange={(e) => e.target.files?.[0] && handleCoverUpload(e.target.files[0])}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleCoverUpload(file)
+                        e.target.value = ''
+                      }}
                     />
                   </label>
                 )}

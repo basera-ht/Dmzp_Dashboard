@@ -104,7 +104,7 @@ const registrationSchema = z.object({
 
 const screenshotUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 1 * 1024 * 1024 }, // 1MB limit 
+  limits: { fileSize: 100 * 1024 }, // 100KB limit
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     if (allowed.includes(file.mimetype)) cb(null, true)

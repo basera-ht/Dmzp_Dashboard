@@ -345,6 +345,14 @@ export function Events() {
     const eventId = e.target.dataset.eventId;
     
     if (!file || !eventId) return;
+    if (file.size > 100 * 1024) {
+      alert('File size must be less than 100KB');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      e.target.value = '';
+      return;
+    }
     
     setUploadingPoster(parseInt(eventId));
     

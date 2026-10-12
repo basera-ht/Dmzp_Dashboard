@@ -96,8 +96,18 @@ export function Reports() {
     if (!file) return;
     const reportId = parseInt(e.target.dataset.reportId || '0');
     if (!reportId) return;
-    if (file.size > 10 * 1024 * 1024) { alert('File size must be less than 10MB'); return; }
-    if (file.type !== 'application/pdf') { alert('Only PDF files are allowed'); return; }
+    if (file.size > 100 * 1024) {
+      alert('File size must be less than 100KB');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      e.target.value = '';
+      return;
+    }
+    if (file.type !== 'application/pdf') {
+      alert('Only PDF files are allowed');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      e.target.value = '';
+      return;
+    }
 
     setUploadingId(reportId);
     try {

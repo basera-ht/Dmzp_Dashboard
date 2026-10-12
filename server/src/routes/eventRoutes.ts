@@ -80,10 +80,17 @@ function normalizeEventPayload(payload: Record<string, any>, isUpdate = false): 
   return { data }
 }
 
+const MAX_POSTER_FILE_SIZE = 102400
+const rawEnvFileSize = process.env.AWS_MAX_FILE_SIZE?.trim()
+const envFileSize = rawEnvFileSize && /^[1-9]\d*$/.test(rawEnvFileSize) && Number.isSafeInteger(Number(rawEnvFileSize))
+  ? Number(rawEnvFileSize)
+  : MAX_POSTER_FILE_SIZE
+const effectivePosterFileSize = Math.min(envFileSize, MAX_POSTER_FILE_SIZE)
+
 const posterUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: parseInt(process.env.AWS_MAX_FILE_SIZE || '10485760', 10),
+    fileSize: effectivePosterFileSize,
   },
   fileFilter: (_req, file, cb) => {
     const allowed = [

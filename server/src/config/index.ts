@@ -42,7 +42,7 @@ export const config = {
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
     bucketName: process.env.AWS_BUCKET_NAME || 'dmzpbucket',
     region: process.env.AWS_REGION || 'ap-south-1',
-    maxFileSize: parseInt(process.env.AWS_MAX_FILE_SIZE || '10485760', 10),
+    maxFileSize: parseInt(process.env.AWS_MAX_FILE_SIZE || '102400', 10),
     eventsFolder: process.env.AWS_S3_EVENTS_FOLDER || 'events',
   },
   smtp: {
