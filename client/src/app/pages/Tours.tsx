@@ -33,6 +33,8 @@ export interface Tour {
   upiQrImage?: string
   upiId2?: string
   upiQrImage2?: string
+  upiId3?: string
+  upiId4?: string
   whatsappGroupUrl?: string
   customFormFields?: CustomFormField[]
   status: 'draft' | 'published' | 'archived'
@@ -258,6 +260,8 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
   const [price, setPrice] = useState(editTour?.price || 0)
   const [upiId, setUpiId] = useState(editTour?.upiId || '')
   const [upiId2, setUpiId2] = useState(editTour?.upiId2 || '')
+  const [upiId3, setUpiId3] = useState(editTour?.upiId3 || '')
+  const [upiId4, setUpiId4] = useState(editTour?.upiId4 || '')
   const [customFields, setCustomFields] = useState<CustomFormField[]>(
     editTour?.customFormFields || []
   )
@@ -309,6 +313,8 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
         price: isPaid ? price : 0,
         upiId: isPaid ? upiId : null,
         upiId2: isPaid && upiId2.trim() ? upiId2 : null,
+        upiId3: isPaid && upiId3.trim() ? upiId3 : null,
+        upiId4: isPaid && upiId4.trim() ? upiId4 : null,
         customFormFields: customFields.filter((f) => f.label.trim()),
         status: saveStatus,
       }
@@ -591,7 +597,7 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Secondary UPI ID <span className="text-xs text-gray-400 font-normal">(Optional — Backup)</span>
+                      Secondary UPI ID <span className="text-xs text-gray-400 font-normal">(Optional — Backup 1)</span>
                     </label>
                     <input
                       type="text"
@@ -601,7 +607,39 @@ function TourWizard({ editTour, onClose, onSaved }: WizardProps) {
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Add a backup UPI ID if the primary account hits transaction limits. Both will be shown to participants.
+                      Backup UPI ID if the primary account hits transaction limits.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Third UPI ID <span className="text-xs text-gray-400 font-normal">(Optional — Backup 2)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={upiId3}
+                      onChange={(e) => setUpiId3(e.target.value)}
+                      placeholder="e.g. dmzp-backup2@okicici"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Additional backup UPI ID for payment collection.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Fourth UPI ID <span className="text-xs text-gray-400 font-normal">(Optional — Backup 3)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={upiId4}
+                      onChange={(e) => setUpiId4(e.target.value)}
+                      placeholder="e.g. dmzp-backup3@okaxis"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Additional backup UPI ID for payment collection.
                     </p>
                   </div>
                 </div>

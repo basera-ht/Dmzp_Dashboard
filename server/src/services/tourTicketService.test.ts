@@ -19,6 +19,8 @@ describe('Tour Ticket Service', () => {
     upiQrImage: null,
     upiId2: null,
     upiQrImage2: null,
+    upiId3: null,
+    upiId4: null,
     whatsappGroupUrl: 'https://chat.whatsapp.com/TestGroup123',
     customFormFields: [],
     status: 'published',

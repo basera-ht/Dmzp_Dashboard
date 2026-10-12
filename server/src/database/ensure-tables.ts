@@ -48,6 +48,10 @@ export async function ensureTables(): Promise<void> {
       "price" integer DEFAULT 0 NOT NULL,
       "upi_id" varchar(255),
       "upi_qr_image" varchar(500),
+      "upi_id_2" varchar(255),
+      "upi_qr_image_2" varchar(500),
+      "upi_id_3" varchar(255),
+      "upi_id_4" varchar(255),
       "whatsapp_group_url" varchar(500),
       "custom_form_fields" jsonb DEFAULT '[]'::jsonb,
       "status" "tour_status" DEFAULT 'draft' NOT NULL,
@@ -79,6 +83,8 @@ export async function ensureTables(): Promise<void> {
   await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "whatsapp_group_url" varchar(500);`)
   await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "upi_id_2" varchar(255);`)
   await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "upi_qr_image_2" varchar(500);`)
+  await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "upi_id_3" varchar(255);`)
+  await db.execute(sql`ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "upi_id_4" varchar(255);`)
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_code" varchar(50);`)
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "ticket_sent_at" timestamp;`)
   await db.execute(sql`ALTER TABLE "tour_registrations" ADD COLUMN IF NOT EXISTS "dmzp_fees_paid" boolean DEFAULT false NOT NULL;`)

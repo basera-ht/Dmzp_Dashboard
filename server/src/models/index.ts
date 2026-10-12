@@ -158,6 +158,8 @@ export const tours = pgTable('tours', {
   upiQrImage: varchar('upi_qr_image', { length: 500 }),
   upiId2: varchar('upi_id_2', { length: 255 }),
   upiQrImage2: varchar('upi_qr_image_2', { length: 500 }),
+  upiId3: varchar('upi_id_3', { length: 255 }),
+  upiId4: varchar('upi_id_4', { length: 255 }),
   whatsappGroupUrl: varchar('whatsapp_group_url', { length: 500 }),
   customFormFields: jsonb('custom_form_fields').$type<CustomFormField[]>().default([]),
   status: tourStatusEnum('status').default('draft').notNull(),

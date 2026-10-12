@@ -52,8 +52,12 @@ export function PublicTourView() {
   const [submitError, setSubmitError] = useState('')
   const [copied, setCopied] = useState(false)
   const [copied2, setCopied2] = useState(false)
+  const [copied3, setCopied3] = useState(false)
+  const [copied4, setCopied4] = useState(false)
   const [copiedDmzp, setCopiedDmzp] = useState(false)
   const [copiedDmzp2, setCopiedDmzp2] = useState(false)
+  const [copiedDmzp3, setCopiedDmzp3] = useState(false)
+  const [copiedDmzp4, setCopiedDmzp4] = useState(false)
   const [completedReg, setCompletedReg] = useState<{ id: number; ticketCode?: string } | null>(null)
 
   // DMZP membership fee state
@@ -117,6 +121,14 @@ export function PublicTourView() {
     ? `upi://pay?pa=${encodeURIComponent(tour.upiId2)}&pn=Tour+Organizer&am=${tour.price}&cu=INR&tn=${encodeURIComponent(tour.title)}`
     : ''
 
+  const upiDeepLink3 = tour?.upiId3
+    ? `upi://pay?pa=${encodeURIComponent(tour.upiId3)}&pn=Tour+Organizer&am=${tour.price}&cu=INR&tn=${encodeURIComponent(tour.title)}`
+    : ''
+
+  const upiDeepLink4 = tour?.upiId4
+    ? `upi://pay?pa=${encodeURIComponent(tour.upiId4)}&pn=Tour+Organizer&am=${tour.price}&cu=INR&tn=${encodeURIComponent(tour.title)}`
+    : ''
+
   const copyUpi = () => {
     if (tour?.upiId) {
       navigator.clipboard.writeText(tour.upiId)
@@ -133,6 +145,22 @@ export function PublicTourView() {
     }
   }
 
+  const copyUpi3 = () => {
+    if (tour?.upiId3) {
+      navigator.clipboard.writeText(tour.upiId3)
+      setCopied3(true)
+      setTimeout(() => setCopied3(false), 2000)
+    }
+  }
+
+  const copyUpi4 = () => {
+    if (tour?.upiId4) {
+      navigator.clipboard.writeText(tour.upiId4)
+      setCopied4(true)
+      setTimeout(() => setCopied4(false), 2000)
+    }
+  }
+
   const DMZP_MEMBERSHIP_FEE = 150
 
   const dmzpDeepLink1 = tour?.upiId
@@ -141,6 +169,14 @@ export function PublicTourView() {
 
   const dmzpDeepLink2 = tour?.upiId2
     ? `upi://pay?pa=${encodeURIComponent(tour.upiId2)}&pn=Tour+Organizer&am=${DMZP_MEMBERSHIP_FEE}&cu=INR&tn=DMZP+Membership+Fee`
+    : ''
+
+  const dmzpDeepLink3 = tour?.upiId3
+    ? `upi://pay?pa=${encodeURIComponent(tour.upiId3)}&pn=Tour+Organizer&am=${DMZP_MEMBERSHIP_FEE}&cu=INR&tn=DMZP+Membership+Fee`
+    : ''
+
+  const dmzpDeepLink4 = tour?.upiId4
+    ? `upi://pay?pa=${encodeURIComponent(tour.upiId4)}&pn=Tour+Organizer&am=${DMZP_MEMBERSHIP_FEE}&cu=INR&tn=DMZP+Membership+Fee`
     : ''
 
   const copyDmzpUpi = () => {
@@ -156,6 +192,22 @@ export function PublicTourView() {
       navigator.clipboard.writeText(tour.upiId2)
       setCopiedDmzp2(true)
       setTimeout(() => setCopiedDmzp2(false), 2000)
+    }
+  }
+
+  const copyDmzpUpi3 = () => {
+    if (tour?.upiId3) {
+      navigator.clipboard.writeText(tour.upiId3)
+      setCopiedDmzp3(true)
+      setTimeout(() => setCopiedDmzp3(false), 2000)
+    }
+  }
+
+  const copyDmzpUpi4 = () => {
+    if (tour?.upiId4) {
+      navigator.clipboard.writeText(tour.upiId4)
+      setCopiedDmzp4(true)
+      setTimeout(() => setCopiedDmzp4(false), 2000)
     }
   }
 
@@ -674,17 +726,25 @@ export function PublicTourView() {
                       Your membership will be linked to your profile once payment is confirmed.
                     </p>
                     <div className="bg-white rounded-xl p-4 border border-amber-200/80 flex flex-col items-center text-center">
-                      <div className={`flex flex-wrap items-start justify-center ${tour.upiId && tour.upiId2 ? 'gap-6' : 'gap-0'}`}>
+                      <div className={`flex flex-wrap items-start justify-center ${[tour.upiId, tour.upiId2, tour.upiId3, tour.upiId4].filter(Boolean).length > 1 ? 'gap-6' : 'gap-0'}`}>
                         {/* Primary UPI */}
                         {tour.upiId && (
                           <div className="flex flex-col items-center">
-                            {tour.upiId2 && (
+                            {(tour.upiId2 || tour.upiId3 || tour.upiId4) && (
                               <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-2 bg-teal-100 px-2.5 py-0.5 rounded-full">
                                 Primary Account
                               </div>
                             )}
                             <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
-                              <QRCode value={dmzpDeepLink1} size={144} />
+                              {tour.upiQrImage ? (
+                                <img
+                                  src={getMediaUrl(tour.upiQrImage)}
+                                  alt="Primary UPI QR"
+                                  className="w-36 h-36 object-contain rounded-lg"
+                                />
+                              ) : (
+                                <QRCode value={dmzpDeepLink1} size={144} />
+                              )}
                             </div>
                             <div className="flex items-center justify-center gap-2 mb-1">
                               <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
@@ -714,10 +774,18 @@ export function PublicTourView() {
                         {tour.upiId2 && (
                           <div className="flex flex-col items-center">
                             <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-2 bg-amber-100 px-2.5 py-0.5 rounded-full">
-                              Backup Account
+                              Backup Account 1
                             </div>
                             <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
-                              <QRCode value={dmzpDeepLink2} size={144} />
+                              {tour.upiQrImage2 ? (
+                                <img
+                                  src={getMediaUrl(tour.upiQrImage2)}
+                                  alt="Backup UPI QR"
+                                  className="w-36 h-36 object-contain rounded-lg"
+                                />
+                              ) : (
+                                <QRCode value={dmzpDeepLink2} size={144} />
+                              )}
                             </div>
                             <div className="flex items-center justify-center gap-2 mb-1">
                               <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
@@ -728,7 +796,7 @@ export function PublicTourView() {
                                 type="button"
                                 onClick={copyDmzpUpi2}
                                 className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
-                                title="Copy Backup UPI ID"
+                                title="Copy Backup UPI ID 1"
                               >
                                 {copiedDmzp2 ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
@@ -737,14 +805,80 @@ export function PublicTourView() {
                               href={dmzpDeepLink2}
                               className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 hover:text-amber-800 hover:underline"
                             >
-                              <span>Pay ₹150 via Backup UPI</span>
+                              <span>Pay ₹150 via Backup UPI 1</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
                         )}
 
-                        {/* When both UPI IDs are absent */}
-                        {!tour.upiId && !tour.upiId2 && (
+                        {/* Third UPI (Optional) */}
+                        {tour.upiId3 && (
+                          <div className="flex flex-col items-center">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 mb-2 bg-indigo-100 px-2.5 py-0.5 rounded-full">
+                              Backup Account 2
+                            </div>
+                            <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
+                              <QRCode value={dmzpDeepLink3} size={144} />
+                            </div>
+                            <div className="flex items-center justify-center gap-2 mb-1">
+                              <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
+                              <code className="bg-amber-50 px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-gray-900 border border-amber-200">
+                                {tour.upiId3}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={copyDmzpUpi3}
+                                className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
+                                title="Copy Backup UPI ID 2"
+                              >
+                                {copiedDmzp3 ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                            <a
+                              href={dmzpDeepLink3}
+                              className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-indigo-700 hover:text-indigo-800 hover:underline"
+                            >
+                              <span>Pay ₹150 via Backup UPI 2</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Fourth UPI (Optional) */}
+                        {tour.upiId4 && (
+                          <div className="flex flex-col items-center">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-purple-700 mb-2 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                              Backup Account 3
+                            </div>
+                            <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
+                              <QRCode value={dmzpDeepLink4} size={144} />
+                            </div>
+                            <div className="flex items-center justify-center gap-2 mb-1">
+                              <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
+                              <code className="bg-amber-50 px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-gray-900 border border-amber-200">
+                                {tour.upiId4}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={copyDmzpUpi4}
+                                className="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors border border-transparent hover:border-amber-200"
+                                title="Copy Backup UPI ID 3"
+                              >
+                                {copiedDmzp4 ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                            <a
+                              href={dmzpDeepLink4}
+                              className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 hover:text-purple-800 hover:underline"
+                            >
+                              <span>Pay ₹150 via Backup UPI 3</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
+
+                        {/* When all UPI IDs are absent */}
+                        {!tour.upiId && !tour.upiId2 && !tour.upiId3 && !tour.upiId4 && (
                           <div className="flex flex-col items-center">
                             <p className="text-xs text-amber-800 text-center py-2 leading-relaxed">
                               For this tour, you can pay your DMZP membership fee in person at the event registration desk.
@@ -753,7 +887,7 @@ export function PublicTourView() {
                         )}
                       </div>
 
-                      {(tour.upiId || tour.upiId2) && (
+                      {(tour.upiId || tour.upiId2 || tour.upiId3 || tour.upiId4) && (
                         <p className="text-[11px] text-gray-500 font-medium mt-2">
                           Scan with GPay, PhonePe, Paytm or any UPI app to pay ₹150 automatically
                         </p>
@@ -948,10 +1082,10 @@ export function PublicTourView() {
                   Pay <span className="font-bold text-teal-800">₹{tour.price.toLocaleString('en-IN')}</span> using any UPI app
                 </p>
 
-                <div className={`flex flex-wrap items-start justify-center ${tour.upiId2 ? 'gap-6' : 'gap-0'}`}>
+                <div className={`flex flex-wrap items-start justify-center ${[tour.upiId, tour.upiId2, tour.upiId3, tour.upiId4].filter(Boolean).length > 1 ? 'gap-6' : 'gap-0'}`}>
                   {/* Primary UPI */}
                   <div className="flex flex-col items-center">
-                    {tour.upiId2 && (
+                    {(tour.upiId2 || tour.upiId3 || tour.upiId4) && (
                       <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-2 bg-teal-100 px-2.5 py-0.5 rounded-full">Primary Account</div>
                     )}
                     {/* QR Code */}
@@ -986,7 +1120,7 @@ export function PublicTourView() {
                   {/* Secondary UPI (Optional) */}
                   {tour.upiId2 && (
                     <div className="flex flex-col items-center">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-2 bg-amber-100 px-2.5 py-0.5 rounded-full">Backup Account</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-2 bg-amber-100 px-2.5 py-0.5 rounded-full">Backup Account 1</div>
                       <div className="bg-white rounded-2xl p-4 inline-block shadow-sm border border-gray-200/80 mb-3">
                         {tour.upiQrImage2 ? (
                           <img
@@ -1006,18 +1140,64 @@ export function PublicTourView() {
                         <button
                           onClick={copyUpi2}
                           className="p-1 hover:bg-white rounded-lg text-teal-600 transition-colors border border-transparent hover:border-gray-200"
-                          title="Copy Backup UPI ID"
+                          title="Copy Backup UPI ID 1"
                         >
                           {copied2 ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
                   )}
+
+                  {/* Third UPI (Optional) */}
+                  {tour.upiId3 && (
+                    <div className="flex flex-col items-center">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 mb-2 bg-indigo-100 px-2.5 py-0.5 rounded-full">Backup Account 2</div>
+                      <div className="bg-white rounded-2xl p-4 inline-block shadow-sm border border-gray-200/80 mb-3">
+                        <QRCode value={upiDeepLink3} size={176} />
+                      </div>
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
+                        <code className="bg-white px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-gray-900 border border-gray-200">
+                          {tour.upiId3}
+                        </code>
+                        <button
+                          onClick={copyUpi3}
+                          className="p-1 hover:bg-white rounded-lg text-teal-600 transition-colors border border-transparent hover:border-gray-200"
+                          title="Copy Backup UPI ID 2"
+                        >
+                          {copied3 ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fourth UPI (Optional) */}
+                  {tour.upiId4 && (
+                    <div className="flex flex-col items-center">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-purple-700 mb-2 bg-purple-100 px-2.5 py-0.5 rounded-full">Backup Account 3</div>
+                      <div className="bg-white rounded-2xl p-4 inline-block shadow-sm border border-gray-200/80 mb-3">
+                        <QRCode value={upiDeepLink4} size={176} />
+                      </div>
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
+                        <code className="bg-white px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-gray-900 border border-gray-200">
+                          {tour.upiId4}
+                        </code>
+                        <button
+                          onClick={copyUpi4}
+                          className="p-1 hover:bg-white rounded-lg text-teal-600 transition-colors border border-transparent hover:border-gray-200"
+                          title="Copy Backup UPI ID 3"
+                        >
+                          {copied4 ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {tour.upiId2 && (
+                {(tour.upiId2 || tour.upiId3 || tour.upiId4) && (
                   <p className="text-xs text-gray-500 mt-3 italic">
-                    You can pay to either account. Use the backup if the primary is not accepting payments.
+                    You can pay to any account. Use backup accounts if the primary is not accepting payments.
                   </p>
                 )}
               </div>

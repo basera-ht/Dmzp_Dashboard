@@ -21,6 +21,8 @@ const tourCreateSchema = z.object({
   upiQrImage: z.string().max(500).nullable().optional(),
   upiId2: z.string().trim().max(255).nullable().optional(),
   upiQrImage2: z.string().max(500).nullable().optional(),
+  upiId3: z.string().trim().max(255).nullable().optional(),
+  upiId4: z.string().trim().max(255).nullable().optional(),
   whatsappGroupUrl: z.string().trim().max(500).nullable().optional(),
   customFormFields: z.array(z.object({
     id: z.string(),
