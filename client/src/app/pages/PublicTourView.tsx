@@ -123,12 +123,14 @@ export function PublicTourView() {
     }
   }
 
+  const DMZP_MEMBERSHIP_FEE = 150
+
   const dmzpDeepLink1 = tour?.upiId
-    ? `upi://pay?pa=${encodeURIComponent(tour.upiId)}&pn=Tour+Organizer&cu=INR&tn=DMZP+Membership+Fee`
+    ? `upi://pay?pa=${encodeURIComponent(tour.upiId)}&pn=Tour+Organizer&am=${DMZP_MEMBERSHIP_FEE}&cu=INR&tn=DMZP+Membership+Fee`
     : ''
 
   const dmzpDeepLink2 = tour?.upiId2
-    ? `upi://pay?pa=${encodeURIComponent(tour.upiId2)}&pn=Tour+Organizer&cu=INR&tn=DMZP+Membership+Fee`
+    ? `upi://pay?pa=${encodeURIComponent(tour.upiId2)}&pn=Tour+Organizer&am=${DMZP_MEMBERSHIP_FEE}&cu=INR&tn=DMZP+Membership+Fee`
     : ''
 
   const copyDmzpUpi = () => {
@@ -469,9 +471,8 @@ export function PublicTourView() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your.email@example.com"
-                  className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    email.trim() && !isEmailValid(email) ? 'border-red-300 bg-red-50/20' : 'border-gray-200'
-                  }`}
+                  className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${email.trim() && !isEmailValid(email) ? 'border-red-300 bg-red-50/20' : 'border-gray-200'
+                    }`}
                 />
               </div>
               <div>
@@ -611,7 +612,7 @@ export function PublicTourView() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-gray-800">Click to upload your DMZP Card</p>
-                          <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WebP or GIF up to 10MB</p>
+                          <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WebP or GIF up to 100KB</p>
                         </div>
                         <input
                           type="file"
@@ -626,9 +627,14 @@ export function PublicTourView() {
 
                 {dmzpFeesPaid === 'no' && (
                   <div className="mt-3 p-4 bg-amber-50/60 border border-amber-200 rounded-2xl">
-                    <h4 className="text-sm font-bold text-amber-900 mb-1">Pay DMZP Membership Fee</h4>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <h4 className="text-sm font-bold text-amber-900">Pay DMZP Membership Fee</h4>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-200 text-amber-950 border border-amber-300">
+                        Fee: ₹150
+                      </span>
+                    </div>
                     <p className="text-xs text-amber-800 mb-3 leading-relaxed">
-                      Please pay the DMZP membership fee using the QR code or UPI ID below.
+                      Please pay the DMZP membership fee of <strong className="font-semibold text-amber-950">₹150</strong> using the QR code or UPI ID below.
                       Your membership will be linked to your profile once payment is confirmed.
                     </p>
                     <div className="bg-white rounded-xl p-4 border border-amber-200/80 flex flex-col items-center text-center">
@@ -642,15 +648,7 @@ export function PublicTourView() {
                               </div>
                             )}
                             <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
-                              {tour.upiQrImage ? (
-                                <img
-                                  src={getMediaUrl(tour.upiQrImage)}
-                                  alt="Primary UPI QR"
-                                  className="w-36 h-36 object-contain rounded-lg"
-                                />
-                              ) : (
-                                <QRCode value={dmzpDeepLink1} size={144} />
-                              )}
+                              <QRCode value={dmzpDeepLink1} size={144} />
                             </div>
                             <div className="flex items-center justify-center gap-2 mb-1">
                               <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
@@ -666,6 +664,13 @@ export function PublicTourView() {
                                 {copiedDmzp ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
                             </div>
+                            <a
+                              href={dmzpDeepLink1}
+                              className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-teal-700 hover:text-teal-800 hover:underline"
+                            >
+                              <span>Pay ₹150 via UPI App</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
                           </div>
                         )}
 
@@ -676,15 +681,7 @@ export function PublicTourView() {
                               Backup Account
                             </div>
                             <div className="bg-white rounded-2xl p-3 inline-block shadow-xs border border-gray-200 mb-2">
-                              {tour.upiQrImage2 ? (
-                                <img
-                                  src={getMediaUrl(tour.upiQrImage2)}
-                                  alt="Backup UPI QR"
-                                  className="w-36 h-36 object-contain rounded-lg"
-                                />
-                              ) : (
-                                <QRCode value={dmzpDeepLink2} size={144} />
-                              )}
+                              <QRCode value={dmzpDeepLink2} size={144} />
                             </div>
                             <div className="flex items-center justify-center gap-2 mb-1">
                               <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">UPI ID:</span>
@@ -700,6 +697,13 @@ export function PublicTourView() {
                                 {copiedDmzp2 ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
                             </div>
+                            <a
+                              href={dmzpDeepLink2}
+                              className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 hover:text-amber-800 hover:underline"
+                            >
+                              <span>Pay ₹150 via Backup UPI</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
                           </div>
                         )}
 
@@ -715,7 +719,7 @@ export function PublicTourView() {
 
                       {(tour.upiId || tour.upiId2) && (
                         <p className="text-[11px] text-gray-500 font-medium mt-2">
-                          Scan with GPay, PhonePe, Paytm or any UPI app
+                          Scan with GPay, PhonePe, Paytm or any UPI app to pay ₹150 automatically
                         </p>
                       )}
 
