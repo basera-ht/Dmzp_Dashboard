@@ -46,15 +46,30 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }))
 
-// CORS: allow the configured origin, or all origins in non-production
+// CORS: allow the configured origin(s), or reflectively allow all origins.
+// NOTE: Using credentials=true with origin:'*' is rejected by browsers.
+// When CORS_ORIGIN is '*', we use a reflective origin function so that the
+// exact requesting Origin is echoed back — this satisfies browsers while
+// still permitting mobile/webview clients where Origin may be null/absent.
 const corsOrigin = config.cors.origin
-app.use(cors({
-  origin: corsOrigin === '*' ? true : corsOrigin,
+const corsOptions: import('cors').CorsOptions = {
+  origin: corsOrigin === '*'
+    // Reflect the request Origin (or allow null-origin webview requests)
+    ? (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        callback(null, true)
+      }
+    : corsOrigin,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
-}))
+  // Allow browsers to cache the preflight response for 2 hours
+  maxAge: 7200,
+}
+app.use(cors(corsOptions))
+// Explicitly handle OPTIONS preflight for all routes (mobile & webview browsers
+// sometimes send a standalone OPTIONS request that must return 204 immediately)
+app.options('*', cors(corsOptions))
 
 app.use(morgan('combined'))
 app.use(express.json({ limit: '15mb' }))

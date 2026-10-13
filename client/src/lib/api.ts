@@ -1,4 +1,11 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+import { fetchWithRetry, friendlyNetworkError } from './fetchWithRetry'
+
+// Strip trailing slashes and, in production, enforce https://
+const _rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+export const API_BASE_URL = _rawUrl
+  .replace(/\/+$/, '') // strip trailing slashes
+  // Upgrade http:// to https:// only when not localhost (production safety)
+  .replace(/^http:\/\/(?!localhost)(?!127\.0\.0\.1)/, 'https://')
 
 export function getMediaUrl(url?: string | null): string {
   if (!url) return ''
@@ -184,11 +191,14 @@ class ApiClient {
       'X-Requested-With': 'XMLHttpRequest',
     }
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithRetry(url, {
         method: 'POST',
         headers,
         credentials: 'include',
         body: formData,
+        timeoutMs: 30_000,
+        maxAttempts: 3,
+        initialBackoffMs: 1_500,
       })
 
       const text = await response.text()
@@ -204,8 +214,8 @@ class ApiClient {
         return { success: false, error: data.error || `Upload failed with status ${response.status}` }
       }
       return data
-    } catch (error: any) {
-      return { success: false, error: error.message || 'Upload failed' }
+    } catch (error: unknown) {
+      return { success: false, error: friendlyNetworkError(error) }
     }
   }
 
@@ -216,11 +226,14 @@ class ApiClient {
       'X-Requested-With': 'XMLHttpRequest',
     }
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithRetry(url, {
         method: 'PUT',
         headers,
         credentials: 'include',
         body: formData,
+        timeoutMs: 30_000,
+        maxAttempts: 3,
+        initialBackoffMs: 1_500,
       })
 
       const text = await response.text()
@@ -236,8 +249,8 @@ class ApiClient {
         return { success: false, error: data.error || `Upload failed with status ${response.status}` }
       }
       return data
-    } catch (error: any) {
-      return { success: false, error: error.message || 'Upload failed' }
+    } catch (error: unknown) {
+      return { success: false, error: friendlyNetworkError(error) }
     }
   }
 }

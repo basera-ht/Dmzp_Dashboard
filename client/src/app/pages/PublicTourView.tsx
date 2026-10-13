@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router'
 import QRCode from 'react-qr-code'
 import {
   MapPin, Calendar, Users, IndianRupee, Copy, Check,
   AlertCircle, Loader2, Upload, ChevronRight, CheckCircle2,
   ChevronLeft, ImageIcon, X, Ticket, ExternalLink, CreditCard,
+  RefreshCw, WifiOff,
 } from 'lucide-react'
 import { API_BASE_URL, getMediaUrl } from '../../lib/api'
+import { fetchWithRetry, friendlyNetworkError } from '../../lib/fetchWithRetry'
 import type { Tour } from './Tours'
 
 function formatDate(d: string) {
@@ -21,15 +23,34 @@ function formatDate(d: string) {
   }
 }
 
+/**
+ * Detects common in-app WebView environments (WhatsApp, Instagram, Facebook
+ * on Android) where UPI intents and cross-origin requests may be blocked.
+ * Returns a short label or null if a full browser is detected.
+ */
+function detectInAppWebview(): string | null {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  if (/FBAN|FBAV/i.test(ua)) return 'Facebook'
+  if (/Instagram/i.test(ua)) return 'Instagram'
+  // WhatsApp webview — Android only (iOS opens Safari)
+  if (/WhatsApp/i.test(ua)) return 'WhatsApp'
+  return null
+}
+
 async function publicFetch(url: string, options?: RequestInit) {
-  const res = await fetch(`${API_BASE_URL}/public/tours${url}`, {
+  const fullUrl = `${API_BASE_URL}/public/tours${url}`
+  const res = await fetchWithRetry(fullUrl, {
     ...options,
     headers: { 'X-Requested-With': 'XMLHttpRequest', ...options?.headers },
+    timeoutMs: 25_000,
+    maxAttempts: 3,
+    initialBackoffMs: 1_500,
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Request failed')
   return data
 }
+
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
@@ -39,6 +60,7 @@ export function PublicTourView() {
   const [tour, setTour] = useState<Tour | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [webviewWarning, setWebviewWarning] = useState<string | null>(null)
 
   // registration form state
   const [step, setStep] = useState(0) // 0=details, 1=payment, 2=done
@@ -70,6 +92,11 @@ export function PublicTourView() {
   const [dmzpAddress, setDmzpAddress] = useState('')
 
   useEffect(() => {
+    // Detect in-app webviews on mount (WhatsApp, Instagram, Facebook Android)
+    setWebviewWarning(detectInAppWebview())
+  }, [])
+
+  useEffect(() => {
     if (!slug) return
     setLoading(true)
     publicFetch(`/t/${slug}`)
@@ -77,9 +104,10 @@ export function PublicTourView() {
         setTour(res.data)
         setError('')
       })
-      .catch((e) => setError(e.message || 'Tour not found'))
+      .catch((e: unknown) => setError(friendlyNetworkError(e)))
       .finally(() => setLoading(false))
   }, [slug])
+
 
   // Handle screenshot selection and preview URL
   const handleScreenshotChange = (file: File | null) => {
@@ -229,7 +257,7 @@ export function PublicTourView() {
   // Payment screenshot is required for paid tours and should be lower than 100 KB
   const canSubmitStep1 = () => Boolean(screenshot) && (screenshot ? screenshot.size <= 100 * 1024 : true)
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!tour) return
     if (tour.isPaid && !screenshot) {
       setSubmitError('Please upload your payment screenshot to proceed.')
@@ -278,27 +306,31 @@ export function PublicTourView() {
         formData.append('dmzpAddress', dmzpAddress.trim())
       }
 
-      const regData = await fetch(`${API_BASE_URL}/public/tours/t/${slug}/register`, {
+      const registrationUrl = `${API_BASE_URL}/public/tours/t/${slug}/register`
+      const response = await fetchWithRetry(registrationUrl, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         body: formData,
-      }).then(async (r) => {
-        const data = await r.json()
-        if (!r.ok) throw new Error(data.error || 'Registration failed')
-        return data
+        timeoutMs: 30_000,
+        maxAttempts: 3,
+        initialBackoffMs: 1_500,
       })
+
+      const regData = await response.json()
+      if (!response.ok) throw new Error(regData.error || 'Registration failed')
 
       if (regData?.data) {
         setCompletedReg(regData.data)
       }
 
       setStep(tour.isPaid ? 2 : 1)
-    } catch (e: any) {
-      setSubmitError(e.message || 'Registration failed')
+    } catch (e: unknown) {
+      setSubmitError(friendlyNetworkError(e))
     } finally {
       setSubmitting(false)
     }
-  }
+  }, [tour, screenshot, dmzpFeesPaid, dmzpCard, fullName, email, phone, customResponses, dmzpInstitution, dmzpCourse, dmzpBloodGroup, dmzpAddress, slug])
+
 
   const handleResetForm = () => {
     setStep(0)
@@ -507,12 +539,41 @@ export function PublicTourView() {
             )}
           </div>
 
-          {submitError && (
-            <div className="mb-5 p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{submitError}</span>
+          {/* In-App WebView Warning */}
+          {webviewWarning && (
+            <div className="mb-5 p-3.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-xl text-sm flex items-start gap-2">
+              <WifiOff className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+              <div>
+                <p className="font-semibold text-amber-900 mb-0.5">Open in your browser for best experience</p>
+                <p className="text-xs leading-relaxed">
+                  You're using the <strong>{webviewWarning}</strong> in-app browser. UPI payment links and file uploads may not work correctly here.
+                  Please tap the menu (⋮) and choose <strong>"Open in Chrome"</strong> or <strong>"Open in Browser"</strong> to continue.
+                </p>
+              </div>
             </div>
           )}
+
+          {submitError && (
+            <div className="mb-5 p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm" role="alert">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1">{submitError}</span>
+              </div>
+              {/* Retry button — shown when a re-attempt is meaningful (submit steps) */}
+              {(step === 1 || (!tour.isPaid && step === 0)) && (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-900 border border-red-300 hover:border-red-500 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
+
 
           {/* Step 0: Attendee Details */}
           {step === 0 && (
