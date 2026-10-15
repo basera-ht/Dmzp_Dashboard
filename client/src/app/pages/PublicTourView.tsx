@@ -46,8 +46,16 @@ async function publicFetch(url: string, options?: RequestInit) {
     maxAttempts: 3,
     initialBackoffMs: 1_500,
   })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Request failed')
+  // Safely parse JSON — a non-JSON body (e.g. HTML from a proxy/CDN cold-start)
+  // should not throw a raw SyntaxError; fall back to an HTTP-status message.
+  let data: any
+  try {
+    data = await res.json()
+  } catch {
+    if (!res.ok) throw new Error(`Request failed (HTTP ${res.status})`)
+    throw new Error('Unexpected response format from server')
+  }
+  if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
   return data
 }
 
@@ -312,12 +320,22 @@ export function PublicTourView() {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         body: formData,
         timeoutMs: 30_000,
-        maxAttempts: 3,
-        initialBackoffMs: 1_500,
+        // Non-idempotent POST: never auto-retry. A retry could create a duplicate
+        // registration or send a duplicate ticket email. The Retry button lets the
+        // user re-attempt only after confirming no submission was received.
+        maxAttempts: 1,
       })
 
-      const regData = await response.json()
-      if (!response.ok) throw new Error(regData.error || 'Registration failed')
+      // Safely parse response — a non-JSON body (proxy error page) should give
+      // a status-based message rather than a raw SyntaxError.
+      let regData: any
+      try {
+        regData = await response.json()
+      } catch {
+        if (!response.ok) throw new Error(`Registration failed (HTTP ${response.status})`)
+        throw new Error('Unexpected response from server. Please check your registration email.')
+      }
+      if (!response.ok) throw new Error(regData?.error || `Registration failed (HTTP ${response.status})`)
 
       if (regData?.data) {
         setCompletedReg(regData.data)

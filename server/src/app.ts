@@ -46,20 +46,17 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }))
 
-// CORS: allow the configured origin(s), or reflectively allow all origins.
-// NOTE: Using credentials=true with origin:'*' is rejected by browsers.
-// When CORS_ORIGIN is '*', we use a reflective origin function so that the
-// exact requesting Origin is echoed back — this satisfies browsers while
-// still permitting mobile/webview clients where Origin may be null/absent.
+// CORS configuration.
+// Security note: credentials:true with origin:'*' is rejected by browsers AND
+// is a security risk when combined with a reflective-origin callback.
+// When CORS_ORIGIN is '*' (open public API), send the literal wildcard and
+// disable credentials so browsers don't expose cookies to arbitrary origins.
+// For a specific configured origin, credentials:true is safe and correct.
 const corsOrigin = config.cors.origin
+const isWildcard = corsOrigin === '*'
 const corsOptions: import('cors').CorsOptions = {
-  origin: corsOrigin === '*'
-    // Reflect the request Origin (or allow null-origin webview requests)
-    ? (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        callback(null, true)
-      }
-    : corsOrigin,
-  credentials: true,
+  origin: isWildcard ? '*' : corsOrigin,
+  credentials: !isWildcard,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],

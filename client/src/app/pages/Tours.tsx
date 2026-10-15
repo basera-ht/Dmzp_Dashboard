@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Plus, Search, Calendar, MapPin, Loader2, Edit2, Trash2, X,
   Eye, ClipboardList, ChevronRight, Check,
@@ -723,12 +723,24 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [selectedProof, setSelectedProof] = useState<TourRegistration | null>(null)
+  const [regSearch, setRegSearch] = useState('')
+
+  const filteredRegistrations = useMemo(() => {
+    const q = regSearch.trim().toLowerCase()
+    if (!q) return registrations
+    return registrations.filter(
+      (r) =>
+        r.fullName.toLowerCase().includes(q) ||
+        r.email.toLowerCase().includes(q) ||
+        r.phoneNumber.includes(q)
+    )
+  }, [registrations, regSearch])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const [regRes, statsRes] = await Promise.all([
-        apiClient.get<any>(`/tours/${tour.id}/registrations?limit=200`),
+        apiClient.get<any>(`/tours/${tour.id}/registrations?limit=2000`),
         apiClient.get<RegStats>(`/tours/${tour.id}/registrations/stats`),
       ])
       if (regRes.success) setRegistrations(regRes.data?.data || [])
@@ -866,17 +878,33 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
               <button onClick={() => setTicketNotice('')} className="text-emerald-700 hover:text-emerald-950 font-bold ml-2">×</button>
             </div>
           )}
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-500">
-              Showing {registrations.length} participant(s)
-            </span>
-            <button
-              onClick={exportCSV}
-              disabled={registrations.length === 0}
-              className="px-3.5 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg disabled:opacity-50 transition-colors"
-            >
-              Export CSV
-            </button>
+          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3">
+            {/* Search participants */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                type="text"
+                value={regSearch}
+                onChange={(e) => setRegSearch(e.target.value)}
+                placeholder="Search by name, email or phone…"
+                className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+              />
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-xs text-gray-500">
+                {regSearch.trim()
+                  ? `${filteredRegistrations.length} of ${registrations.length} participant(s)`
+                  : `${registrations.length} participant(s)`}
+              </span>
+              <button
+                onClick={exportCSV}
+                disabled={registrations.length === 0}
+                title="Export all participants (ignores search filter)"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg disabled:opacity-50 transition-colors"
+              >
+                Export CSV
+              </button>
+            </div>
           </div>
 
           {/* Table */}
@@ -917,7 +945,7 @@ function RegistrationPanel({ tour, onClose }: RegProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {registrations.map((r) => (
+                  {filteredRegistrations.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50/70 transition-colors">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-gray-900">{r.fullName}</div>

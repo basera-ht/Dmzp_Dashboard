@@ -1,11 +1,15 @@
 import { fetchWithRetry, friendlyNetworkError } from './fetchWithRetry'
 
-// Strip trailing slashes and, in production, enforce https://
+// Strip trailing slashes. In production builds, upgrade http:// to https://
+// for non-local URLs. localhost and 127.0.0.1 are always kept as-is so that
+// local proxies and the hardcoded default URL are never broken.
 const _rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 export const API_BASE_URL = _rawUrl
   .replace(/\/+$/, '') // strip trailing slashes
-  // Upgrade http:// to https:// only when not localhost (production safety)
-  .replace(/^http:\/\/(?!localhost)(?!127\.0\.0\.1)/, 'https://')
+  .replace(
+    /^http:\/\/(?!localhost(?::\d+)?(?:[/?#]|$))(?!127\.0\.0\.1(?::\d+)?(?:[/?#]|$))/,
+    import.meta.env.PROD ? 'https://' : 'http://',
+  )
 
 export function getMediaUrl(url?: string | null): string {
   if (!url) return ''
@@ -197,8 +201,8 @@ class ApiClient {
         credentials: 'include',
         body: formData,
         timeoutMs: 30_000,
-        maxAttempts: 3,
-        initialBackoffMs: 1_500,
+        // POST is non-idempotent: never auto-retry to prevent duplicate uploads.
+        maxAttempts: 1,
       })
 
       const text = await response.text()

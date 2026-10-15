@@ -144,7 +144,9 @@ router.post('/:id/qr-image', imageUpload.single('qrImage'), asyncHandler(async (
 
 router.get('/:id/registrations', asyncHandler(async (req, res) => {
   const id = parseInt(req.params.id as string)
-  const pageInfo = pagination(req)
+  // Allow up to 2000 registrations per page so admins can load all participants
+  // in a single request for review and CSV export.
+  const pageInfo = pagination(req, 50, 2000)
   if (!pageInfo) return res.status(400).json({ success: false, error: 'Invalid pagination' })
   const result = await tourController.getRegistrations(id, pageInfo.page, pageInfo.limit)
   res.json(result)
